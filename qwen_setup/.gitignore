@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Model cache
+models/
+cache/
+data_cache/
+
+# Trading logs
+trades_log.jsonl
+dex_trades_log.jsonl
+benchmark_results.json
+stress_test_results.json
+market_snapshot.json
+
+# Environment
+.env
+venv/
+env/
