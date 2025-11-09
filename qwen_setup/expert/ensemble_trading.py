@@ -11,7 +11,17 @@ from collections import Counter
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from client import QwenClient
+
+try:
+    from client import QwenClient
+    # Try to connect to real server
+    test_client = QwenClient()
+    if not test_client.health_check():
+        print("⚠️  No Qwen server detected. Using mock client for testing.")
+        from mock_client import MockQwenClient as QwenClient
+except Exception:
+    print("⚠️  No Qwen server detected. Using mock client for testing.")
+    from mock_client import MockQwenClient as QwenClient
 
 
 class EnsembleTrader:
