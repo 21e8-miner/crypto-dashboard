@@ -185,13 +185,14 @@ class RecursiveSelfImprover:
         self.evaluator = evaluator or self._default_evaluator
 
         self.improvement_history: List[ImprovementAttempt] = []
-        self.best_strategy = self.current_strategy
-        self.best_performance = self._evaluate(self.current_strategy)
         self.strategy_graveyard: List[SelfImprovingStrategy] = []  # Failed strategies
-
         self.consecutive_failures = 0
         self.meta_level = 0  # Current level of meta-improvement
         self.total_resources_used = {"time": 0.0, "iterations": 0, "evaluations": 0}
+
+        # Initialize best strategy after total_resources_used is set
+        self.best_strategy = self.current_strategy
+        self.best_performance = self._evaluate(self.current_strategy)
 
     def _generate_id(self) -> str:
         return hashlib.sha256(
