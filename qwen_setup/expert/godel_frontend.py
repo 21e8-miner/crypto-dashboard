@@ -996,10 +996,10 @@ if __name__ == '__main__':
     print("THE GÖDEL MACHINE: Visual Frontend")
     print("=" * 60)
     print()
-    print("Starting server at http://localhost:8080")
+    print("Starting server at http://localhost:3000")
     print()
     print("Press Ctrl+C to stop")
     print("=" * 60)
 
     create_machine()
-    app.run(host='0.0.0.0', port=8080, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=3000, debug=False, threaded=True)
