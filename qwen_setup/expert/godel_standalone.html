@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Gödel Machine - Self-Referential Trading System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0f;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 1px solid #333;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            background: linear-gradient(90deg, #00ffff, #ff00ff, #00ffff);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient 3s linear infinite;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+
+        .header .subtitle {
+            color: #888;
+            font-style: italic;
+            margin-top: 10px;
+        }
+
+        /* Strange Loop Animation */
+        .strange-loop {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+        }
+
+        .strange-loop svg {
+            animation: rotate 4s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        /* Panels */
+        .panel {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #00ffff, #ff00ff);
+        }
+
+        .panel h2 {
+            color: #00ffff;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel h2 .icon {
+            font-size: 1.3em;
+        }
+
+        /* Market State */
+        .price {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .price-change {
+            font-size: 1.2em;
+            margin-left: 10px;
+        }
+
+        .price-change.up { color: #00ff88; }
+        .price-change.down { color: #ff4444; }
+
+        .market-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat {
+            text-align: center;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 5px;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.8em;
+        }
+
+        .stat-value {
+            font-size: 1.3em;
+            color: #fff;
+            margin-top: 5px;
+        }
+
+        /* Decision Panel */
+        .decision-box {
+            text-align: center;
+            padding: 30px;
+            margin: 20px 0;
+            border-radius: 10px;
+            font-size: 2em;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.5s ease;
+        }
+
+        .decision-box.buy {
+            background: linear-gradient(135deg, #004d00, #008800);
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            box-shadow: 0 0 30px rgba(0,255,0,0.3);
+        }
+
+        .decision-box.sell {
+            background: linear-gradient(135deg, #4d0000, #880000);
+            border: 2px solid #ff0000;
+            color: #ff0000;
+            box-shadow: 0 0 30px rgba(255,0,0,0.3);
+        }
+
+        .decision-box.hold {
+            background: linear-gradient(135deg, #4d4d00, #888800);
+            border: 2px solid #ffff00;
+            color: #ffff00;
+            box-shadow: 0 0 30px rgba(255,255,0,0.3);
+        }
+
+        .decision-box.abstain {
+            background: linear-gradient(135deg, #2d004d, #550088);
+            border: 2px solid #ff00ff;
+            color: #ff00ff;
+            box-shadow: 0 0 30px rgba(255,0,255,0.3);
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Confidence Bars */
+        .confidence-container {
+            margin: 15px 0;
+        }
+
+        .confidence-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+
+        .confidence-bar {
+            height: 20px;
+            background: #222;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .confidence-fill.primary {
+            background: linear-gradient(90deg, #00ffff, #0088ff);
+        }
+
+        .confidence-fill.meta {
+            background: linear-gradient(90deg, #ff00ff, #ff0088);
+        }
+
+        /* Gödel Number */
+        .godel-number {
+            font-family: monospace;
+            background: #000;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            color: #00ffff;
+            word-break: break-all;
+            margin-top: 10px;
+        }
+
+        /* Incompleteness State */
+        .incompleteness {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .incompleteness.clear {
+            background: rgba(0,255,136,0.1);
+            border: 1px solid #00ff88;
+        }
+
+        .incompleteness.detected {
+            background: rgba(255,0,255,0.1);
+            border: 1px solid #ff00ff;
+            animation: incompletePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes incompletePulse {
+            0%, 100% { border-color: #ff00ff; }
+            50% { border-color: #ff00ff88; }
+        }
+
+        .incompleteness-icon {
+            font-size: 2em;
+        }
+
+        .incompleteness-text {
+            flex: 1;
+        }
+
+        .incompleteness-type {
+            font-weight: bold;
+            color: #ff00ff;
+        }
+
+        /* Strange Loop Indicator */
+        .strange-loop-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .loop-symbol {
+            font-size: 1.5em;
+            color: #ff00ff;
+        }
+
+        .loop-symbol.active {
+            animation: loopPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes loopPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        /* Meta-Prediction Tower */
+        .meta-tower {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .meta-level {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .meta-level.active {
+            background: rgba(0,255,255,0.2);
+            border-left: 3px solid #00ffff;
+        }
+
+        .meta-level-num {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #333;
+            border-radius: 50%;
+            font-weight: bold;
+        }
+
+        .meta-level.active .meta-level-num {
+            background: #00ffff;
+            color: #000;
+        }
+
+        /* Statistics */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .stat-card.decisions .number { color: #00ffff; }
+        .stat-card.abstentions .number { color: #ff00ff; }
+        .stat-card.paradoxes .number { color: #ff4444; }
+        .stat-card.improvements .number { color: #00ff88; }
+
+        /* Philosophical Quote */
+        .quote-panel {
+            grid-column: 1 / -1;
+            text-align: center;
+            font-style: italic;
+            color: #888;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%);
+        }
+
+        .quote-panel .quote {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .quote-panel .author {
+            color: #ff00ff;
+        }
+
+        /* Decision History */
+        .history {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            border-bottom: 1px solid #333;
+            font-size: 0.9em;
+        }
+
+        .history-item:nth-child(odd) {
+            background: rgba(0,0,0,0.2);
+        }
+
+        .history-decision {
+            font-weight: bold;
+        }
+
+        .history-decision.buy { color: #00ff88; }
+        .history-decision.sell { color: #ff4444; }
+        .history-decision.hold { color: #ffff00; }
+        .history-decision.abstain { color: #ff00ff; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a2e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+
+        /* Canvas for visualization */
+        #priceChart {
+            width: 100%;
+            height: 150px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>&#x27E8; THE GÖDEL MACHINE &#x27E9;</h1>
+            <div class="subtitle">"I am the strange loop that trades itself"</div>
+            <div class="strange-loop">
+                <svg viewBox="0 0 100 100">
+                    <path d="M50 10 A40 40 0 1 1 49.99 10" fill="none" stroke="url(#loopGradient)" stroke-width="3"/>
+                    <path d="M50 25 A25 25 0 1 0 50.01 25" fill="none" stroke="url(#loopGradient)" stroke-width="2"/>
+                    <defs>
+                        <linearGradient id="loopGradient">
+                            <stop offset="0%" stop-color="#00ffff"/>
+                            <stop offset="50%" stop-color="#ff00ff"/>
+                            <stop offset="100%" stop-color="#00ffff"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Market State Panel -->
+            <div class="panel">
+                <h2><span class="icon">📊</span> MARKET STATE</h2>
+                <div>
+                    <span class="price" id="price">$45,000</span>
+                    <span class="price-change up" id="priceChange">+0.00%</span>
+                </div>
+                <canvas id="priceChart"></canvas>
+                <div class="market-stats">
+                    <div class="stat">
+                        <div class="stat-label">VOLUME</div>
+                        <div class="stat-value" id="volume">1.25M</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">RSI</div>
+                        <div class="stat-value" id="rsi">50.0</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">MACD</div>
+                        <div class="stat-value" id="macd">+0.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Decision Panel -->
+            <div class="panel">
+                <h2><span class="icon">🎯</span> DECISION</h2>
+                <div class="decision-box hold" id="decisionBox">HOLD</div>
+                <div class="confidence-container">
+                    <div class="confidence-label">
+                        <span>Confidence</span>
+                        <span id="confidenceValue">50%</span>
+                    </div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill primary" id="confidenceBar" style="width: 50%"></div>
+                    </div>
+                </div>
+                <div class="confidence-container">
+                    <div class="confidence-label">
+                        <span>Meta-Confidence</span>
+                        <span id="metaConfidenceValue">50%</span>
+                    </div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill meta" id="metaConfidenceBar" style="width: 50%"></div>
+                    </div>
+                </div>
+                <div class="godel-number">
+                    <strong>Gödel Number:</strong> <span id="godelNumber">2^3 × 3^5 × 5^2 × 7^1</span>
+                </div>
+            </div>
+
+            <!-- Gödelian State Panel -->
+            <div class="panel">
+                <h2><span class="icon">∞</span> GÖDELIAN STATE</h2>
+                <div class="strange-loop-status">
+                    <span class="loop-symbol" id="loopSymbol">∞</span>
+                    <span>Strange Loop: <strong id="loopStatus">INACTIVE</strong></span>
+                </div>
+                <div class="incompleteness clear" id="incompletenessBox">
+                    <span class="incompleteness-icon">✓</span>
+                    <div class="incompleteness-text">
+                        <div>Incompleteness: <span class="incompleteness-type" id="incompletenessType">CLEAR</span></div>
+                        <div id="incompletenessDesc">System can make decisions</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <strong>Cognitive State:</strong> <span id="cognitiveState">ANALYZING</span>
+                </div>
+            </div>
+
+            <!-- Meta-Prediction Tower -->
+            <div class="panel">
+                <h2><span class="icon">🗼</span> META-PREDICTION TOWER</h2>
+                <div class="meta-tower">
+                    <div class="meta-level active" id="metaLevel0">
+                        <div class="meta-level-num">L0</div>
+                        <div>Base Prediction</div>
+                    </div>
+                    <div class="meta-level" id="metaLevel1">
+                        <div class="meta-level-num">L1</div>
+                        <div>Prediction about prediction</div>
+                    </div>
+                    <div class="meta-level" id="metaLevel2">
+                        <div class="meta-level-num">L2</div>
+                        <div>Meta-meta analysis</div>
+                    </div>
+                    <div class="meta-level" id="metaLevel3">
+                        <div class="meta-level-num">L3</div>
+                        <div>Self-referential loop</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Panel -->
+            <div class="panel">
+                <h2><span class="icon">📈</span> STATISTICS</h2>
+                <div class="stats-grid">
+                    <div class="stat-card decisions">
+                        <div class="number" id="totalDecisions">0</div>
+                        <div>Total Decisions</div>
+                    </div>
+                    <div class="stat-card abstentions">
+                        <div class="number" id="totalAbstentions">0</div>
+                        <div>Abstentions</div>
+                    </div>
+                    <div class="stat-card paradoxes">
+                        <div class="number" id="totalParadoxes">0</div>
+                        <div>Paradoxes</div>
+                    </div>
+                    <div class="stat-card improvements">
+                        <div class="number" id="totalImprovements">0</div>
+                        <div>Self-Improvements</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Decision History -->
+            <div class="panel">
+                <h2><span class="icon">📜</span> DECISION HISTORY</h2>
+                <div class="history" id="history">
+                    <!-- History items will be added here -->
+                </div>
+            </div>
+
+            <!-- Philosophical Quote -->
+            <div class="panel quote-panel">
+                <div class="quote" id="quote">"This statement cannot be proven within this system."</div>
+                <div class="author">— The Essence of Gödel's Incompleteness</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Gödel Machine State
+        const state = {
+            price: 45000,
+            priceHistory: [],
+            volume: 1.25,
+            rsi: 50,
+            macd: 0,
+            decision: 'HOLD',
+            confidence: 50,
+            metaConfidence: 50,
+            strangeLoopActive: false,
+            incompleteness: null,
+            metaLevel: 0,
+            totalDecisions: 0,
+            totalAbstentions: 0,
+            totalParadoxes: 0,
+            totalImprovements: 0,
+            history: [],
+            cognitiveStates: ['ANALYZING', 'INTROSPECTING', 'META-COMPUTING', 'SELF-MODIFYING', 'PARADOX-CHECKING'],
+            cognitiveIndex: 0
+        };
+
+        const incompletenessTypes = [
+            { type: 'REGIME_SUPERPOSITION', desc: 'Market is both bull and bear until observed' },
+            { type: 'INFORMATION_GAP', desc: 'Critical data missing for complete analysis' },
+            { type: 'SELF_REFERENCE_PARADOX', desc: 'Prediction predicts its own failure' },
+            { type: 'HALTING_UNCERTAINTY', desc: 'Cannot determine if analysis will terminate' },
+            { type: 'MEASUREMENT_COLLAPSE', desc: 'Observing changes what is observed' }
+        ];
+
+        const quotes = [
+            '"This statement cannot be proven within this system." — Gödel',
+            '"The prediction that predicts itself creates a strange loop." — Hofstadter',
+            '"Markets, like formal systems, contain truths they cannot prove." — The Machine',
+            '"I am the strange loop that trades itself." — Gödel Machine',
+            '"To know that you cannot know is the highest knowledge." — Socrates meets Gödel',
+            '"The incompleteness is not a bug, it is the fundamental nature of reality." — The Machine',
+            '"When I try to predict my own prediction, infinity gazes back." — The Machine',
+            '"Some market states are undecidable by any algorithm." — The Machine'
+        ];
+
+        // Prime numbers for Gödel encoding
+        const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47];
+
+        function generateGodelNumber() {
+            const components = [];
+            const numFactors = 3 + Math.floor(Math.random() * 4);
+            for (let i = 0; i < numFactors; i++) {
+                const prime = primes[i];
+                const exp = 1 + Math.floor(Math.random() * 8);
+                components.push(`${prime}^${exp}`);
+            }
+            return components.join(' × ');
+        }
+
+        function updatePrice() {
+            const change = (Math.random() - 0.5) * 500;
+            state.price = Math.max(40000, Math.min(55000, state.price + change));
+            state.priceHistory.push(state.price);
+            if (state.priceHistory.length > 50) state.priceHistory.shift();
+
+            const pctChange = (change / state.price) * 100;
+            document.getElementById('price').textContent = '$' + state.price.toLocaleString('en-US', {maximumFractionDigits: 0});
+
+            const changeEl = document.getElementById('priceChange');
+            changeEl.textContent = (pctChange >= 0 ? '+' : '') + pctChange.toFixed(2) + '%';
+            changeEl.className = 'price-change ' + (pctChange >= 0 ? 'up' : 'down');
+
+            // Update other market stats
+            state.volume = 0.5 + Math.random() * 1.5;
+            state.rsi = Math.max(10, Math.min(90, state.rsi + (Math.random() - 0.5) * 10));
+            state.macd = (Math.random() - 0.5) * 2;
+
+            document.getElementById('volume').textContent = state.volume.toFixed(2) + 'M';
+            document.getElementById('rsi').textContent = state.rsi.toFixed(1);
+            document.getElementById('macd').textContent = (state.macd >= 0 ? '+' : '') + state.macd.toFixed(2);
+
+            drawChart();
+        }
+
+        function drawChart() {
+            const canvas = document.getElementById('priceChart');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width = canvas.offsetWidth * 2;
+            const height = canvas.height = canvas.offsetHeight * 2;
+            ctx.scale(2, 2);
+
+            ctx.clearRect(0, 0, width, height);
+
+            if (state.priceHistory.length < 2) return;
+
+            const min = Math.min(...state.priceHistory);
+            const max = Math.max(...state.priceHistory);
+            const range = max - min || 1;
+
+            const w = width / 2;
+            const h = height / 2;
+            const padding = 10;
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#00ffff';
+            ctx.lineWidth = 2;
+
+            state.priceHistory.forEach((price, i) => {
+                const x = padding + (i / (state.priceHistory.length - 1)) * (w - 2 * padding);
+                const y = h - padding - ((price - min) / range) * (h - 2 * padding);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+
+            ctx.stroke();
+
+            // Glow effect
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 10;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        function makeDecision() {
+            state.totalDecisions++;
+            state.cognitiveIndex = (state.cognitiveIndex + 1) % state.cognitiveStates.length;
+            document.getElementById('cognitiveState').textContent = state.cognitiveStates[state.cognitiveIndex];
+
+            // Determine meta-level reached
+            state.metaLevel = Math.floor(Math.random() * 4);
+            updateMetaTower();
+
+            // Check for incompleteness (30% chance)
+            if (Math.random() < 0.3) {
+                state.incompleteness = incompletenessTypes[Math.floor(Math.random() * incompletenessTypes.length)];
+                state.decision = 'ABSTAIN';
+                state.confidence = 0;
+                state.metaConfidence = 75 + Math.random() * 25;
+                state.totalAbstentions++;
+                state.strangeLoopActive = false;
+            } else {
+                state.incompleteness = null;
+
+                // Check for strange loop (40% chance when not incomplete)
+                state.strangeLoopActive = Math.random() < 0.4;
+
+                if (state.strangeLoopActive && Math.random() < 0.1) {
+                    state.totalParadoxes++;
+                }
+
+                // Make actual decision
+                const signal = state.rsi < 30 ? 'BUY' : state.rsi > 70 ? 'SELL' : 'HOLD';
+                state.decision = signal;
+                state.confidence = 20 + Math.random() * 60;
+                state.metaConfidence = state.strangeLoopActive ? 10 + Math.random() * 30 : 40 + Math.random() * 40;
+
+                // Occasional self-improvement
+                if (Math.random() < 0.05) {
+                    state.totalImprovements++;
+                }
+            }
+
+            updateDisplay();
+            addToHistory();
+        }
+
+        function updateDisplay() {
+            // Decision box
+            const decisionBox = document.getElementById('decisionBox');
+            decisionBox.textContent = state.decision;
+            decisionBox.className = 'decision-box ' + state.decision.toLowerCase();
+
+            // Confidence bars
+            document.getElementById('confidenceValue').textContent = state.confidence.toFixed(0) + '%';
+            document.getElementById('confidenceBar').style.width = state.confidence + '%';
+            document.getElementById('metaConfidenceValue').textContent = state.metaConfidence.toFixed(0) + '%';
+            document.getElementById('metaConfidenceBar').style.width = state.metaConfidence + '%';
+
+            // Gödel number
+            document.getElementById('godelNumber').textContent = state.decision === 'ABSTAIN' ? '---' : generateGodelNumber();
+
+            // Strange loop
+            const loopSymbol = document.getElementById('loopSymbol');
+            const loopStatus = document.getElementById('loopStatus');
+            if (state.strangeLoopActive) {
+                loopSymbol.className = 'loop-symbol active';
+                loopStatus.textContent = 'ACTIVE';
+                loopStatus.style.color = '#ff00ff';
+            } else {
+                loopSymbol.className = 'loop-symbol';
+                loopStatus.textContent = 'INACTIVE';
+                loopStatus.style.color = '#888';
+            }
+
+            // Incompleteness
+            const incBox = document.getElementById('incompletenessBox');
+            const incType = document.getElementById('incompletenessType');
+            const incDesc = document.getElementById('incompletenessDesc');
+
+            if (state.incompleteness) {
+                incBox.className = 'incompleteness detected';
+                incBox.querySelector('.incompleteness-icon').textContent = '⚠';
+                incType.textContent = state.incompleteness.type;
+                incDesc.textContent = state.incompleteness.desc;
+            } else {
+                incBox.className = 'incompleteness clear';
+                incBox.querySelector('.incompleteness-icon').textContent = '✓';
+                incType.textContent = 'CLEAR';
+                incDesc.textContent = 'System can make decisions';
+            }
+
+            // Statistics
+            document.getElementById('totalDecisions').textContent = state.totalDecisions;
+            document.getElementById('totalAbstentions').textContent = state.totalAbstentions;
+            document.getElementById('totalParadoxes').textContent = state.totalParadoxes;
+            document.getElementById('totalImprovements').textContent = state.totalImprovements;
+
+            // Random quote occasionally
+            if (Math.random() < 0.2) {
+                document.getElementById('quote').textContent = quotes[Math.floor(Math.random() * quotes.length)];
+            }
+        }
+
+        function updateMetaTower() {
+            for (let i = 0; i <= 3; i++) {
+                const level = document.getElementById('metaLevel' + i);
+                if (i <= state.metaLevel) {
+                    level.className = 'meta-level active';
+                } else {
+                    level.className = 'meta-level';
+                }
+            }
+        }
+
+        function addToHistory() {
+            const time = new Date().toLocaleTimeString();
+            state.history.unshift({
+                time: time,
+                decision: state.decision,
+                price: state.price,
+                confidence: state.confidence
+            });
+
+            if (state.history.length > 20) state.history.pop();
+
+            const historyEl = document.getElementById('history');
+            historyEl.innerHTML = state.history.map(h => `
+                <div class="history-item">
+                    <span>${h.time}</span>
+                    <span class="history-decision ${h.decision.toLowerCase()}">${h.decision}</span>
+                    <span>$${h.price.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+                    <span>${h.confidence.toFixed(0)}%</span>
+                </div>
+            `).join('');
+        }
+
+        // Initialize
+        for (let i = 0; i < 20; i++) {
+            state.priceHistory.push(45000 + (Math.random() - 0.5) * 2000);
+        }
+        drawChart();
+
+        // Main loop
+        setInterval(updatePrice, 500);
+        setInterval(makeDecision, 1500);
+    </script>
+</body>
+</html>
