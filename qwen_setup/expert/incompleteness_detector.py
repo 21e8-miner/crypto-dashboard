@@ -195,7 +195,7 @@ class IncompletenessDetector:
         # Check MACD vs Trend contradiction
         macd = state.indicators.get("macd")
         trend = state.indicators.get("trend")
-        if macd is not None and trend is not None:
+        if macd is not None and trend is not None and isinstance(trend, (int, float)):
             if macd > 0 and trend < -0.5:
                 contradictions.append(f"MACD={macd:.2f} (bullish) but trend={trend:.2f} (bearish)")
             if macd < 0 and trend > 0.5:
