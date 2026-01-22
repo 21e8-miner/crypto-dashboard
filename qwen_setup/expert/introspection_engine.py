@@ -204,6 +204,10 @@ class IntrospectionEngine:
 
         Returns insights about self at each level.
         """
+        # Defensive: ensure depth is valid
+        if not isinstance(depth, int) or depth < 0:
+            depth = 1
+
         self._introspection_count += 1
         self._last_introspection_time = datetime.now()
         self.current_meta_level = depth

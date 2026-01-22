@@ -138,8 +138,15 @@ class MetaPredictor:
         prev_price = market_data.get("prev_price", price)
         volume = market_data.get("volume", 0)
 
+        # Sanitize inputs
+        import math
+        if price is None or (isinstance(price, float) and (math.isnan(price) or math.isinf(price))):
+            price = 0
+        if prev_price is None or prev_price == 0 or (isinstance(prev_price, float) and (math.isnan(prev_price) or math.isinf(prev_price))):
+            prev_price = price if price != 0 else 1  # Avoid division by zero
+
         # Simple momentum logic
-        price_change = (price - prev_price) / prev_price if prev_price else 0
+        price_change = (price - prev_price) / prev_price if prev_price != 0 else 0
 
         if price_change > 0.02:
             action = "buy"

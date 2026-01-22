@@ -332,20 +332,37 @@ class GodelMachine:
 
         return decision
 
+    def _sanitize_numeric(self, value: Any, default: float = 0.0) -> float:
+        """Sanitize a value to ensure it's a valid numeric type"""
+        import math
+        if value is None:
+            return default
+        if isinstance(value, (int, float)):
+            if math.isnan(value) or math.isinf(value):
+                return default
+            return float(value)
+        try:
+            result = float(value)
+            if math.isnan(result) or math.isinf(result):
+                return default
+            return result
+        except (ValueError, TypeError):
+            return default
+
     def _create_market_state(self, market_data: Dict[str, Any]) -> MarketState:
-        """Convert raw market data to MarketState"""
+        """Convert raw market data to MarketState with input validation"""
         return MarketState(
             timestamp=datetime.now(),
-            price=market_data.get("price", 0),
-            volume=market_data.get("volume", 0),
+            price=self._sanitize_numeric(market_data.get("price"), 0),
+            volume=self._sanitize_numeric(market_data.get("volume"), 0),
             indicators={
-                "rsi": market_data.get("rsi", 50),
-                "macd": market_data.get("macd", 0),
-                "momentum": market_data.get("momentum", 0),
-                "trend": market_data.get("trend", 0)
+                "rsi": self._sanitize_numeric(market_data.get("rsi"), 50),
+                "macd": self._sanitize_numeric(market_data.get("macd"), 0),
+                "momentum": self._sanitize_numeric(market_data.get("momentum"), 0),
+                "trend": self._sanitize_numeric(market_data.get("trend"), 0)
             },
             sentiment=market_data.get("sentiment"),
-            volatility=market_data.get("volatility"),
+            volatility=self._sanitize_numeric(market_data.get("volatility"), None) if market_data.get("volatility") is not None else None,
             regime=market_data.get("regime")
         )
 
