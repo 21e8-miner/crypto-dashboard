@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GÖDEL MACHINE // Autonomous Trading Intelligence</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;700&display=swap');
+
+        :root {
+            --cyan: #00ffff;
+            --magenta: #ff00ff;
+            --green: #00ff88;
+            --red: #ff3366;
+            --yellow: #ffff00;
+            --orange: #ff8800;
+            --blue: #0088ff;
+            --purple: #8800ff;
+            --dark: #0a0a0f;
+            --darker: #050508;
+            --glass: rgba(20, 20, 40, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--darker);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background:
+                radial-gradient(ellipse at 20% 80%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(255, 0, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(0, 136, 255, 0.05) 0%, transparent 70%);
+        }
+
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-image:
+                linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* Header */
+        .header {
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            position: relative;
+        }
+
+        .logo-icon .ring {
+            position: absolute;
+            border: 2px solid;
+            border-radius: 50%;
+            animation: rotate 4s linear infinite;
+        }
+
+        .logo-icon .ring:nth-child(1) {
+            width: 100%;
+            height: 100%;
+            border-color: var(--cyan);
+        }
+
+        .logo-icon .ring:nth-child(2) {
+            width: 70%;
+            height: 70%;
+            top: 15%;
+            left: 15%;
+            border-color: var(--magenta);
+            animation-direction: reverse;
+            animation-duration: 3s;
+        }
+
+        .logo-icon .infinity {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            color: var(--cyan);
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .logo h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8em;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--cyan), var(--magenta));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--green); }
+            50% { opacity: 0.5; box-shadow: 0 0 20px var(--green); }
+        }
+
+        /* Main container */
+        .container {
+            padding: 20px 40px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        /* Dashboard grid */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            grid-template-rows: auto auto auto;
+            gap: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Glass panels */
+        .panel {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--cyan), var(--magenta), var(--cyan));
+            background-size: 200% 100%;
+            animation: shimmer 3s linear infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .panel-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9em;
+            color: var(--cyan);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .panel-title .icon {
+            font-size: 1.2em;
+        }
+
+        /* Main decision display */
+        .decision-panel {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .decision-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+        }
+
+        .decision-box {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 4em;
+            font-weight: 900;
+            padding: 30px 60px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            position: relative;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .decision-box.buy {
+            color: var(--green);
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 255, 136, 0.05));
+            border: 3px solid var(--green);
+            box-shadow:
+                0 0 40px rgba(0, 255, 136, 0.4),
+                inset 0 0 40px rgba(0, 255, 136, 0.1);
+            animation: glowGreen 2s ease-in-out infinite;
+        }
+
+        .decision-box.sell {
+            color: var(--red);
+            background: linear-gradient(135deg, rgba(255, 51, 102, 0.2), rgba(255, 51, 102, 0.05));
+            border: 3px solid var(--red);
+            box-shadow:
+                0 0 40px rgba(255, 51, 102, 0.4),
+                inset 0 0 40px rgba(255, 51, 102, 0.1);
+            animation: glowRed 2s ease-in-out infinite;
+        }
+
+        .decision-box.hold {
+            color: var(--yellow);
+            background: linear-gradient(135deg, rgba(255, 255, 0, 0.2), rgba(255, 255, 0, 0.05));
+            border: 3px solid var(--yellow);
+            box-shadow:
+                0 0 40px rgba(255, 255, 0, 0.4),
+                inset 0 0 40px rgba(255, 255, 0, 0.1);
+        }
+
+        .decision-box.abstain {
+            color: var(--magenta);
+            background: linear-gradient(135deg, rgba(255, 0, 255, 0.2), rgba(255, 0, 255, 0.05));
+            border: 3px solid var(--magenta);
+            box-shadow:
+                0 0 40px rgba(255, 0, 255, 0.4),
+                inset 0 0 40px rgba(255, 0, 255, 0.1);
+            animation: glowMagenta 1s ease-in-out infinite;
+        }
+
+        @keyframes glowGreen {
+            0%, 100% { box-shadow: 0 0 40px rgba(0, 255, 136, 0.4), inset 0 0 40px rgba(0, 255, 136, 0.1); }
+            50% { box-shadow: 0 0 60px rgba(0, 255, 136, 0.6), inset 0 0 60px rgba(0, 255, 136, 0.2); }
+        }
+
+        @keyframes glowRed {
+            0%, 100% { box-shadow: 0 0 40px rgba(255, 51, 102, 0.4), inset 0 0 40px rgba(255, 51, 102, 0.1); }
+            50% { box-shadow: 0 0 60px rgba(255, 51, 102, 0.6), inset 0 0 60px rgba(255, 51, 102, 0.2); }
+        }
+
+        @keyframes glowMagenta {
+            0%, 100% { box-shadow: 0 0 40px rgba(255, 0, 255, 0.4), inset 0 0 40px rgba(255, 0, 255, 0.1); }
+            50% { box-shadow: 0 0 80px rgba(255, 0, 255, 0.8), inset 0 0 80px rgba(255, 0, 255, 0.3); }
+        }
+
+        /* Confidence meters */
+        .confidence-section {
+            display: flex;
+            gap: 40px;
+            margin-top: 30px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .confidence-meter {
+            flex: 1;
+            text-align: center;
+        }
+
+        .meter-label {
+            font-size: 0.8em;
+            color: #888;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .meter-circle {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .meter-circle svg {
+            transform: rotate(-90deg);
+        }
+
+        .meter-circle .bg {
+            fill: none;
+            stroke: #222;
+            stroke-width: 8;
+        }
+
+        .meter-circle .progress {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+
+        .meter-circle .progress.primary {
+            stroke: url(#cyanGradient);
+        }
+
+        .meter-circle .progress.meta {
+            stroke: url(#magentaGradient);
+        }
+
+        .meter-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5em;
+            font-weight: 700;
+        }
+
+        /* Price chart */
+        .chart-panel {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+        }
+
+        #priceChart {
+            width: 100%;
+            height: 100%;
+        }
+
+        .price-display {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+        }
+
+        .current-price {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+
+        .price-change {
+            font-size: 1.2em;
+            margin-left: 10px;
+        }
+
+        .price-change.up { color: var(--green); }
+        .price-change.down { color: var(--red); }
+
+        /* Gödelian state panel */
+        .godel-panel {
+            grid-column: 2;
+            grid-row: 1 / 3;
+        }
+
+        .godel-state {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .strange-loop-display {
+            text-align: center;
+            padding: 30px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .loop-symbol {
+            font-size: 4em;
+            color: var(--magenta);
+            transition: all 0.3s ease;
+        }
+
+        .loop-symbol.active {
+            animation: loopPulse 1s ease-in-out infinite;
+            text-shadow: 0 0 30px var(--magenta);
+        }
+
+        @keyframes loopPulse {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(180deg); }
+        }
+
+        .loop-status {
+            margin-top: 10px;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Incompleteness display */
+        .incompleteness-box {
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .incompleteness-box.clear {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .incompleteness-box.detected {
+            background: rgba(255, 0, 255, 0.1);
+            border: 1px solid rgba(255, 0, 255, 0.5);
+            animation: incompletePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes incompletePulse {
+            0%, 100% { border-color: rgba(255, 0, 255, 0.5); }
+            50% { border-color: rgba(255, 0, 255, 1); box-shadow: 0 0 20px rgba(255, 0, 255, 0.3); }
+        }
+
+        .incompleteness-icon {
+            font-size: 2em;
+        }
+
+        .incompleteness-text {
+            flex: 1;
+        }
+
+        .incompleteness-type {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            color: var(--magenta);
+        }
+
+        .incompleteness-desc {
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        /* Meta tower */
+        .meta-tower {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .meta-level {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .meta-level.active {
+            background: rgba(0, 255, 255, 0.1);
+            border-left: 3px solid var(--cyan);
+        }
+
+        .level-badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8em;
+            font-weight: 700;
+            background: #333;
+            transition: all 0.3s ease;
+        }
+
+        .meta-level.active .level-badge {
+            background: var(--cyan);
+            color: #000;
+            box-shadow: 0 0 15px var(--cyan);
+        }
+
+        .level-desc {
+            font-size: 0.85em;
+            color: #888;
+        }
+
+        .meta-level.active .level-desc {
+            color: #fff;
+        }
+
+        /* Stats panel */
+        .stats-panel {
+            grid-column: 1 / -1;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+
+        .stat-card.decisions .stat-value { color: var(--cyan); }
+        .stat-card.abstentions .stat-value { color: var(--magenta); }
+        .stat-card.paradoxes .stat-value { color: var(--red); }
+        .stat-card.improvements .stat-value { color: var(--green); }
+        .stat-card.accuracy .stat-value { color: var(--yellow); }
+        .stat-card.loops .stat-value { color: var(--purple); }
+
+        .stat-label {
+            font-size: 0.75em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 5px;
+        }
+
+        /* Gödel number display */
+        .godel-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            color: var(--cyan);
+            word-break: break-all;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        /* Control panel */
+        .controls-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid var(--cyan);
+            background: var(--glass);
+            color: var(--cyan);
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn:hover {
+            background: var(--cyan);
+            color: #000;
+            box-shadow: 0 0 20px var(--cyan);
+        }
+
+        .control-btn.active {
+            background: var(--cyan);
+            color: #000;
+        }
+
+        /* Quote display */
+        .quote-panel {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 30px;
+            font-style: italic;
+            color: #666;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .quote-text {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .quote-author {
+            color: var(--magenta);
+            font-style: normal;
+        }
+
+        /* History panel */
+        .history-panel {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.3s ease;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .history-decision {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .history-decision.buy { color: var(--green); }
+        .history-decision.sell { color: var(--red); }
+        .history-decision.hold { color: var(--yellow); }
+        .history-decision.abstain { color: var(--magenta); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--cyan);
+            border-radius: 3px;
+        }
+
+        /* Settings modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--dark);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 30px;
+            width: 400px;
+            max-width: 90%;
+        }
+
+        .modal h2 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--cyan);
+            margin-bottom: 20px;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .setting-label {
+            color: #888;
+        }
+
+        .setting-control input[type="range"] {
+            width: 120px;
+            accent-color: var(--cyan);
+        }
+
+        .setting-control input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--cyan);
+        }
+
+        .modal-close {
+            margin-top: 20px;
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--cyan);
+            background: transparent;
+            color: var(--cyan);
+            font-family: 'Orbitron', sans-serif;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--cyan);
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    <div class="grid-overlay"></div>
+
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">
+                <div class="ring"></div>
+                <div class="ring"></div>
+                <span class="infinity">∞</span>
+            </div>
+            <h1>GÖDEL MACHINE</h1>
+        </div>
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span id="systemStatus">ACTIVE</span>
+            </div>
+            <div class="status-indicator">
+                <span>⏱</span>
+                <span id="uptime">00:00:00</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="dashboard">
+            <!-- Decision Panel -->
+            <div class="panel decision-panel">
+                <div class="panel-title"><span class="icon">🎯</span> DECISION ENGINE</div>
+                <div class="decision-display">
+                    <div class="decision-box hold" id="decisionBox">HOLD</div>
+                    <div class="confidence-section">
+                        <div class="confidence-meter">
+                            <div class="meter-label">Confidence</div>
+                            <div class="meter-circle">
+                                <svg viewBox="0 0 120 120">
+                                    <defs>
+                                        <linearGradient id="cyanGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" stop-color="#00ffff"/>
+                                            <stop offset="100%" stop-color="#0088ff"/>
+                                        </linearGradient>
+                                        <linearGradient id="magentaGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" stop-color="#ff00ff"/>
+                                            <stop offset="100%" stop-color="#ff0088"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <circle class="bg" cx="60" cy="60" r="50"/>
+                                    <circle class="progress primary" id="confidenceCircle" cx="60" cy="60" r="50"
+                                            stroke-dasharray="314" stroke-dashoffset="157"/>
+                                </svg>
+                                <div class="meter-value" id="confidenceValue">50%</div>
+                            </div>
+                        </div>
+                        <div class="confidence-meter">
+                            <div class="meter-label">Meta-Confidence</div>
+                            <div class="meter-circle">
+                                <svg viewBox="0 0 120 120">
+                                    <circle class="bg" cx="60" cy="60" r="50"/>
+                                    <circle class="progress meta" id="metaConfidenceCircle" cx="60" cy="60" r="50"
+                                            stroke-dasharray="314" stroke-dashoffset="157"/>
+                                </svg>
+                                <div class="meter-value" id="metaConfidenceValue">50%</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="godel-number" style="margin-top: 20px; width: 100%;">
+                        <strong>Gödel Number:</strong> <span id="godelNumber">2³ × 3⁵ × 5² × 7¹</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Panel -->
+            <div class="panel chart-panel">
+                <div class="panel-title"><span class="icon">📈</span> MARKET DATA</div>
+                <div class="chart-container">
+                    <div class="price-display">
+                        <span class="current-price" id="currentPrice">$45,000</span>
+                        <span class="price-change up" id="priceChange">+0.00%</span>
+                    </div>
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Gödelian State Panel -->
+            <div class="panel godel-panel">
+                <div class="panel-title"><span class="icon">∞</span> GÖDELIAN STATE</div>
+                <div class="godel-state">
+                    <div class="strange-loop-display">
+                        <div class="loop-symbol" id="loopSymbol">∞</div>
+                        <div class="loop-status">Strange Loop: <span id="loopStatus">INACTIVE</span></div>
+                    </div>
+
+                    <div class="incompleteness-box clear" id="incompletenessBox">
+                        <span class="incompleteness-icon" id="incompletenessIcon">✓</span>
+                        <div class="incompleteness-text">
+                            <div class="incompleteness-type" id="incompletenessType">CLEAR</div>
+                            <div class="incompleteness-desc" id="incompletenessDesc">System can make decisions</div>
+                        </div>
+                    </div>
+
+                    <div class="panel-title" style="margin-top: 20px;"><span class="icon">🗼</span> META-PREDICTION TOWER</div>
+                    <div class="meta-tower">
+                        <div class="meta-level active" id="metaLevel0">
+                            <div class="level-badge">L0</div>
+                            <div class="level-desc">Base Prediction</div>
+                        </div>
+                        <div class="meta-level" id="metaLevel1">
+                            <div class="level-badge">L1</div>
+                            <div class="level-desc">Prediction about prediction</div>
+                        </div>
+                        <div class="meta-level" id="metaLevel2">
+                            <div class="level-badge">L2</div>
+                            <div class="level-desc">Meta-meta analysis</div>
+                        </div>
+                        <div class="meta-level" id="metaLevel3">
+                            <div class="level-badge">L3</div>
+                            <div class="level-desc">Self-referential loop</div>
+                        </div>
+                    </div>
+
+                    <div class="panel-title" style="margin-top: 20px;"><span class="icon">📜</span> HISTORY</div>
+                    <div class="history-panel" id="historyPanel"></div>
+                </div>
+            </div>
+
+            <!-- Stats Panel -->
+            <div class="panel stats-panel">
+                <div class="panel-title"><span class="icon">📊</span> STATISTICS</div>
+                <div class="stats-grid">
+                    <div class="stat-card decisions">
+                        <div class="stat-value" id="totalDecisions">0</div>
+                        <div class="stat-label">Decisions</div>
+                    </div>
+                    <div class="stat-card abstentions">
+                        <div class="stat-value" id="totalAbstentions">0</div>
+                        <div class="stat-label">Abstentions</div>
+                    </div>
+                    <div class="stat-card paradoxes">
+                        <div class="stat-value" id="totalParadoxes">0</div>
+                        <div class="stat-label">Paradoxes</div>
+                    </div>
+                    <div class="stat-card improvements">
+                        <div class="stat-value" id="totalImprovements">0</div>
+                        <div class="stat-label">Self-Improvements</div>
+                    </div>
+                    <div class="stat-card loops">
+                        <div class="stat-value" id="totalLoops">0</div>
+                        <div class="stat-label">Strange Loops</div>
+                    </div>
+                    <div class="stat-card accuracy">
+                        <div class="stat-value" id="accuracy">--</div>
+                        <div class="stat-label">Accuracy</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quote Panel -->
+            <div class="panel quote-panel">
+                <div class="quote-text" id="quoteText">"This statement cannot be proven within this system."</div>
+                <div class="quote-author">— The Essence of Gödel's Incompleteness</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Control buttons -->
+    <div class="controls-panel">
+        <button class="control-btn" id="pauseBtn" title="Pause/Resume">⏸</button>
+        <button class="control-btn" id="settingsBtn" title="Settings">⚙</button>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <h2>Settings</h2>
+            <div class="setting-row">
+                <span class="setting-label">Decision Speed</span>
+                <div class="setting-control">
+                    <input type="range" id="speedSlider" min="500" max="3000" value="1500">
+                </div>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">Incompleteness Sensitivity</span>
+                <div class="setting-control">
+                    <input type="range" id="sensitivitySlider" min="10" max="50" value="30">
+                </div>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">Enable Sound</span>
+                <div class="setting-control">
+                    <input type="checkbox" id="soundToggle">
+                </div>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">Dark Mode</span>
+                <div class="setting-control">
+                    <input type="checkbox" id="darkModeToggle" checked>
+                </div>
+            </div>
+            <button class="modal-close" id="closeSettings">CLOSE</button>
+        </div>
+    </div>
+
+    <script>
+        // State
+        const state = {
+            price: 45000,
+            priceHistory: [],
+            decision: 'HOLD',
+            confidence: 50,
+            metaConfidence: 50,
+            strangeLoopActive: false,
+            incompleteness: null,
+            metaLevel: 0,
+            totalDecisions: 0,
+            totalAbstentions: 0,
+            totalParadoxes: 0,
+            totalImprovements: 0,
+            totalLoops: 0,
+            history: [],
+            paused: false,
+            startTime: Date.now(),
+            decisionSpeed: 1500,
+            incompleteSensitivity: 30
+        };
+
+        const incompletenessTypes = [
+            { type: 'REGIME_SUPERPOSITION', desc: 'Market exists in multiple states simultaneously' },
+            { type: 'INFORMATION_GAP', desc: 'Critical data missing for complete analysis' },
+            { type: 'SELF_REFERENCE_PARADOX', desc: 'Prediction predicts its own failure' },
+            { type: 'HALTING_UNCERTAINTY', desc: 'Cannot determine if analysis will terminate' },
+            { type: 'MEASUREMENT_COLLAPSE', desc: 'Observation changes the observed state' }
+        ];
+
+        const quotes = [
+            { text: '"This statement cannot be proven within this system."', author: 'Gödel' },
+            { text: '"The prediction that predicts itself creates a strange loop."', author: 'Hofstadter' },
+            { text: '"Markets, like formal systems, contain truths they cannot prove."', author: 'The Machine' },
+            { text: '"I am the strange loop that trades itself."', author: 'Gödel Machine' },
+            { text: '"To know that you cannot know is the highest knowledge."', author: 'Socratic Paradox' },
+            { text: '"When I try to predict my own prediction, infinity gazes back."', author: 'The Machine' },
+            { text: '"Some market states are undecidable by any algorithm."', author: 'The Machine' },
+            { text: '"In the mirror of self-reference, truth becomes a strange attractor."', author: 'The Machine' }
+        ];
+
+        const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29];
+        const superscripts = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
+
+        function toSuperscript(n) {
+            return String(n).split('').map(d => superscripts[parseInt(d)]).join('');
+        }
+
+        function generateGodelNumber() {
+            const parts = [];
+            const count = 3 + Math.floor(Math.random() * 4);
+            for (let i = 0; i < count; i++) {
+                const exp = 1 + Math.floor(Math.random() * 8);
+                parts.push(`${primes[i]}${toSuperscript(exp)}`);
+            }
+            return parts.join(' × ');
+        }
+
+        // Chart
+        const canvas = document.getElementById('priceChart');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth * 2;
+            canvas.height = canvas.offsetHeight * 2;
+            ctx.scale(2, 2);
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawChart() {
+            const w = canvas.width / 2;
+            const h = canvas.height / 2;
+            ctx.clearRect(0, 0, w, h);
+
+            if (state.priceHistory.length < 2) return;
+
+            const min = Math.min(...state.priceHistory) * 0.999;
+            const max = Math.max(...state.priceHistory) * 1.001;
+            const range = max - min || 1;
+            const padding = 60;
+
+            // Grid
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (i / 5) * (h - padding * 2);
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(w - 20, y);
+                ctx.stroke();
+            }
+
+            // Price line
+            ctx.beginPath();
+            ctx.strokeStyle = '#00ffff';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 10;
+
+            state.priceHistory.forEach((price, i) => {
+                const x = padding + (i / (state.priceHistory.length - 1)) * (w - padding - 20);
+                const y = padding + (1 - (price - min) / range) * (h - padding * 2);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Fill
+            ctx.lineTo(w - 20, h - padding);
+            ctx.lineTo(padding, h - padding);
+            ctx.closePath();
+            const gradient = ctx.createLinearGradient(0, 0, 0, h);
+            gradient.addColorStop(0, 'rgba(0, 255, 255, 0.3)');
+            gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+            ctx.fillStyle = gradient;
+            ctx.shadowBlur = 0;
+            ctx.fill();
+        }
+
+        function updatePrice() {
+            if (state.paused) return;
+
+            const change = (Math.random() - 0.5) * 500;
+            state.price = Math.max(40000, Math.min(55000, state.price + change));
+            state.priceHistory.push(state.price);
+            if (state.priceHistory.length > 100) state.priceHistory.shift();
+
+            const pctChange = (change / state.price) * 100;
+            document.getElementById('currentPrice').textContent = '$' + state.price.toLocaleString('en-US', {maximumFractionDigits: 0});
+
+            const changeEl = document.getElementById('priceChange');
+            changeEl.textContent = (pctChange >= 0 ? '+' : '') + pctChange.toFixed(2) + '%';
+            changeEl.className = 'price-change ' + (pctChange >= 0 ? 'up' : 'down');
+
+            drawChart();
+        }
+
+        function makeDecision() {
+            if (state.paused) return;
+
+            state.totalDecisions++;
+            state.metaLevel = Math.floor(Math.random() * 4);
+            updateMetaTower();
+
+            // Check incompleteness
+            if (Math.random() * 100 < state.incompleteSensitivity) {
+                state.incompleteness = incompletenessTypes[Math.floor(Math.random() * incompletenessTypes.length)];
+                state.decision = 'ABSTAIN';
+                state.confidence = 0;
+                state.metaConfidence = 75 + Math.random() * 25;
+                state.totalAbstentions++;
+                state.strangeLoopActive = false;
+            } else {
+                state.incompleteness = null;
+                state.strangeLoopActive = Math.random() < 0.4;
+
+                if (state.strangeLoopActive) {
+                    state.totalLoops++;
+                    if (Math.random() < 0.1) state.totalParadoxes++;
+                }
+
+                const rsi = 20 + Math.random() * 60;
+                state.decision = rsi < 35 ? 'BUY' : rsi > 65 ? 'SELL' : 'HOLD';
+                state.confidence = 20 + Math.random() * 60;
+                state.metaConfidence = state.strangeLoopActive ? 10 + Math.random() * 30 : 40 + Math.random() * 40;
+
+                if (Math.random() < 0.05) state.totalImprovements++;
+            }
+
+            updateDisplay();
+            addToHistory();
+
+            if (Math.random() < 0.15) {
+                const quote = quotes[Math.floor(Math.random() * quotes.length)];
+                document.getElementById('quoteText').textContent = quote.text;
+                document.querySelector('.quote-author').textContent = '— ' + quote.author;
+            }
+        }
+
+        function updateDisplay() {
+            // Decision box
+            const box = document.getElementById('decisionBox');
+            box.textContent = state.decision;
+            box.className = 'decision-box ' + state.decision.toLowerCase();
+
+            // Confidence circles
+            const confOffset = 314 - (314 * state.confidence / 100);
+            const metaOffset = 314 - (314 * state.metaConfidence / 100);
+            document.getElementById('confidenceCircle').style.strokeDashoffset = confOffset;
+            document.getElementById('metaConfidenceCircle').style.strokeDashoffset = metaOffset;
+            document.getElementById('confidenceValue').textContent = Math.round(state.confidence) + '%';
+            document.getElementById('metaConfidenceValue').textContent = Math.round(state.metaConfidence) + '%';
+
+            // Gödel number
+            document.getElementById('godelNumber').textContent = state.decision === 'ABSTAIN' ? '---' : generateGodelNumber();
+
+            // Strange loop
+            const loopSymbol = document.getElementById('loopSymbol');
+            const loopStatus = document.getElementById('loopStatus');
+            if (state.strangeLoopActive) {
+                loopSymbol.className = 'loop-symbol active';
+                loopStatus.textContent = 'ACTIVE';
+                loopStatus.style.color = '#ff00ff';
+            } else {
+                loopSymbol.className = 'loop-symbol';
+                loopStatus.textContent = 'INACTIVE';
+                loopStatus.style.color = '#666';
+            }
+
+            // Incompleteness
+            const incBox = document.getElementById('incompletenessBox');
+            const incIcon = document.getElementById('incompletenessIcon');
+            const incType = document.getElementById('incompletenessType');
+            const incDesc = document.getElementById('incompletenessDesc');
+
+            if (state.incompleteness) {
+                incBox.className = 'incompleteness-box detected';
+                incIcon.textContent = '⚠';
+                incType.textContent = state.incompleteness.type;
+                incDesc.textContent = state.incompleteness.desc;
+            } else {
+                incBox.className = 'incompleteness-box clear';
+                incIcon.textContent = '✓';
+                incType.textContent = 'CLEAR';
+                incDesc.textContent = 'System can make decisions';
+            }
+
+            // Stats
+            document.getElementById('totalDecisions').textContent = state.totalDecisions;
+            document.getElementById('totalAbstentions').textContent = state.totalAbstentions;
+            document.getElementById('totalParadoxes').textContent = state.totalParadoxes;
+            document.getElementById('totalImprovements').textContent = state.totalImprovements;
+            document.getElementById('totalLoops').textContent = state.totalLoops;
+
+            const accuracy = state.totalDecisions > 10 ?
+                Math.round(50 + Math.random() * 30) + '%' : '--';
+            document.getElementById('accuracy').textContent = accuracy;
+        }
+
+        function updateMetaTower() {
+            for (let i = 0; i <= 3; i++) {
+                const el = document.getElementById('metaLevel' + i);
+                el.className = i <= state.metaLevel ? 'meta-level active' : 'meta-level';
+            }
+        }
+
+        function addToHistory() {
+            const time = new Date().toLocaleTimeString();
+            state.history.unshift({
+                time,
+                decision: state.decision,
+                price: state.price,
+                confidence: state.confidence
+            });
+            if (state.history.length > 20) state.history.pop();
+
+            const panel = document.getElementById('historyPanel');
+            panel.innerHTML = state.history.map(h => `
+                <div class="history-item">
+                    <span style="color: #666">${h.time}</span>
+                    <span class="history-decision ${h.decision.toLowerCase()}">${h.decision}</span>
+                    <span>$${h.price.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+                    <span style="color: #666">${Math.round(h.confidence)}%</span>
+                </div>
+            `).join('');
+        }
+
+        function updateUptime() {
+            const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+            const h = Math.floor(elapsed / 3600).toString().padStart(2, '0');
+            const m = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0');
+            const s = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('uptime').textContent = `${h}:${m}:${s}`;
+        }
+
+        // Controls
+        document.getElementById('pauseBtn').addEventListener('click', function() {
+            state.paused = !state.paused;
+            this.textContent = state.paused ? '▶' : '⏸';
+            this.classList.toggle('active', state.paused);
+            document.getElementById('systemStatus').textContent = state.paused ? 'PAUSED' : 'ACTIVE';
+        });
+
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            document.getElementById('settingsModal').classList.add('active');
+        });
+
+        document.getElementById('closeSettings').addEventListener('click', () => {
+            document.getElementById('settingsModal').classList.remove('active');
+        });
+
+        document.getElementById('speedSlider').addEventListener('input', function() {
+            state.decisionSpeed = parseInt(this.value);
+            clearInterval(decisionInterval);
+            decisionInterval = setInterval(makeDecision, state.decisionSpeed);
+        });
+
+        document.getElementById('sensitivitySlider').addEventListener('input', function() {
+            state.incompleteSensitivity = parseInt(this.value);
+        });
+
+        // Initialize
+        for (let i = 0; i < 50; i++) {
+            state.priceHistory.push(45000 + (Math.random() - 0.5) * 2000);
+        }
+        drawChart();
+
+        // Main loops
+        setInterval(updatePrice, 200);
+        let decisionInterval = setInterval(makeDecision, state.decisionSpeed);
+        setInterval(updateUptime, 1000);
+    </script>
+</body>
+</html>
