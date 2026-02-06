@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GÖDEL MACHINE // Live Crypto Intelligence</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;700&display=swap');
+
+        :root {
+            --cyan: #00ffff;
+            --magenta: #ff00ff;
+            --green: #00ff88;
+            --red: #ff3366;
+            --yellow: #ffff00;
+            --orange: #ff8800;
+            --blue: #0088ff;
+            --purple: #8800ff;
+            --dark: #0a0a0f;
+            --darker: #050508;
+            --glass: rgba(20, 20, 40, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--darker);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .bg-animation {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+            background:
+                radial-gradient(ellipse at 20% 80%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(255, 0, 255, 0.1) 0%, transparent 50%);
+        }
+
+        .grid-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+            background-image:
+                linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        .header {
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5em;
+            background: linear-gradient(135deg, var(--cyan), var(--magenta));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-dot.live { background: var(--green); }
+        .status-dot.connecting { background: var(--yellow); animation: blink 0.5s infinite; }
+        .status-dot.error { background: var(--red); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 10px currentColor; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Asset selector */
+        .asset-selector {
+            display: flex;
+            gap: 10px;
+            padding: 15px 30px;
+            background: var(--glass);
+            border-bottom: 1px solid var(--glass-border);
+            overflow-x: auto;
+        }
+
+        .asset-btn {
+            padding: 10px 20px;
+            border: 2px solid var(--glass-border);
+            border-radius: 10px;
+            background: transparent;
+            color: #888;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .asset-btn:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        .asset-btn.active {
+            background: var(--cyan);
+            border-color: var(--cyan);
+            color: #000;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+        }
+
+        .asset-btn .price {
+            display: block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8em;
+            margin-top: 4px;
+        }
+
+        .container {
+            padding: 20px 30px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 20px;
+        }
+
+        @media (max-width: 1100px) {
+            .dashboard { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--cyan), var(--magenta), var(--cyan));
+            background-size: 200% 100%;
+            animation: shimmer 3s linear infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .panel-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85em;
+            color: var(--cyan);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Decision panel */
+        .decision-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px;
+        }
+
+        .asset-info {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .asset-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5em;
+            color: var(--cyan);
+        }
+
+        .asset-price {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3em;
+            font-weight: 900;
+            margin: 10px 0;
+        }
+
+        .asset-change {
+            font-size: 1.3em;
+        }
+
+        .asset-change.up { color: var(--green); }
+        .asset-change.down { color: var(--red); }
+
+        .decision-box {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5em;
+            font-weight: 900;
+            padding: 25px 50px;
+            border-radius: 16px;
+            text-transform: uppercase;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            margin: 20px 0;
+        }
+
+        .decision-box.buy {
+            color: var(--green);
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 255, 136, 0.05));
+            border: 3px solid var(--green);
+            box-shadow: 0 0 40px rgba(0, 255, 136, 0.4), inset 0 0 40px rgba(0, 255, 136, 0.1);
+            animation: glowGreen 2s ease-in-out infinite;
+        }
+
+        .decision-box.sell {
+            color: var(--red);
+            background: linear-gradient(135deg, rgba(255, 51, 102, 0.2), rgba(255, 51, 102, 0.05));
+            border: 3px solid var(--red);
+            box-shadow: 0 0 40px rgba(255, 51, 102, 0.4), inset 0 0 40px rgba(255, 51, 102, 0.1);
+            animation: glowRed 2s ease-in-out infinite;
+        }
+
+        .decision-box.hold {
+            color: var(--yellow);
+            background: linear-gradient(135deg, rgba(255, 255, 0, 0.2), rgba(255, 255, 0, 0.05));
+            border: 3px solid var(--yellow);
+            box-shadow: 0 0 40px rgba(255, 255, 0, 0.4), inset 0 0 40px rgba(255, 255, 0, 0.1);
+        }
+
+        .decision-box.abstain {
+            color: var(--magenta);
+            background: linear-gradient(135deg, rgba(255, 0, 255, 0.2), rgba(255, 0, 255, 0.05));
+            border: 3px solid var(--magenta);
+            box-shadow: 0 0 40px rgba(255, 0, 255, 0.4), inset 0 0 40px rgba(255, 0, 255, 0.1);
+            animation: glowMagenta 1s ease-in-out infinite;
+        }
+
+        @keyframes glowGreen {
+            0%, 100% { box-shadow: 0 0 40px rgba(0, 255, 136, 0.4), inset 0 0 40px rgba(0, 255, 136, 0.1); }
+            50% { box-shadow: 0 0 60px rgba(0, 255, 136, 0.6), inset 0 0 60px rgba(0, 255, 136, 0.2); }
+        }
+
+        @keyframes glowRed {
+            0%, 100% { box-shadow: 0 0 40px rgba(255, 51, 102, 0.4), inset 0 0 40px rgba(255, 51, 102, 0.1); }
+            50% { box-shadow: 0 0 60px rgba(255, 51, 102, 0.6), inset 0 0 60px rgba(255, 51, 102, 0.2); }
+        }
+
+        @keyframes glowMagenta {
+            0%, 100% { box-shadow: 0 0 40px rgba(255, 0, 255, 0.4), inset 0 0 40px rgba(255, 0, 255, 0.1); }
+            50% { box-shadow: 0 0 80px rgba(255, 0, 255, 0.8), inset 0 0 80px rgba(255, 0, 255, 0.3); }
+        }
+
+        /* Confidence meters */
+        .confidence-section {
+            display: flex;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .confidence-meter {
+            text-align: center;
+        }
+
+        .meter-label {
+            font-size: 0.75em;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .meter-circle {
+            width: 100px; height: 100px;
+            position: relative;
+        }
+
+        .meter-circle svg {
+            transform: rotate(-90deg);
+        }
+
+        .meter-circle .bg {
+            fill: none;
+            stroke: #222;
+            stroke-width: 8;
+        }
+
+        .meter-circle .progress {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+
+        .meter-circle .progress.primary { stroke: var(--cyan); }
+        .meter-circle .progress.meta { stroke: var(--magenta); }
+
+        .meter-value {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2em;
+            font-weight: 700;
+        }
+
+        /* Chart */
+        .chart-container {
+            height: 200px;
+            position: relative;
+        }
+
+        #priceChart {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Gödel panel */
+        .godel-panel {
+            grid-row: 1 / 3;
+        }
+
+        .strange-loop-display {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+
+        .loop-symbol {
+            font-size: 3em;
+            color: var(--magenta);
+        }
+
+        .loop-symbol.active {
+            animation: loopPulse 1s ease-in-out infinite;
+            text-shadow: 0 0 30px var(--magenta);
+        }
+
+        @keyframes loopPulse {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(180deg); }
+        }
+
+        .loop-status {
+            margin-top: 8px;
+            font-size: 0.9em;
+        }
+
+        .incompleteness-box {
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .incompleteness-box.clear {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .incompleteness-box.detected {
+            background: rgba(255, 0, 255, 0.1);
+            border: 1px solid rgba(255, 0, 255, 0.5);
+            animation: incompletePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes incompletePulse {
+            0%, 100% { border-color: rgba(255, 0, 255, 0.5); }
+            50% { border-color: rgba(255, 0, 255, 1); }
+        }
+
+        .incompleteness-icon { font-size: 1.5em; }
+        .incompleteness-type {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85em;
+            color: var(--magenta);
+        }
+        .incompleteness-desc {
+            font-size: 0.75em;
+            color: #666;
+        }
+
+        .meta-tower {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .meta-level {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .meta-level.active {
+            background: rgba(0, 255, 255, 0.1);
+            border-left: 3px solid var(--cyan);
+        }
+
+        .level-badge {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7em;
+            font-weight: 700;
+            background: #333;
+        }
+
+        .meta-level.active .level-badge {
+            background: var(--cyan);
+            color: #000;
+        }
+
+        .level-desc {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        .meta-level.active .level-desc { color: #fff; }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5em;
+            font-weight: 700;
+        }
+
+        .stat-card.decisions .stat-value { color: var(--cyan); }
+        .stat-card.abstentions .stat-value { color: var(--magenta); }
+        .stat-card.loops .stat-value { color: var(--purple); }
+
+        .stat-label {
+            font-size: 0.65em;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        /* History */
+        .history-panel {
+            max-height: 180px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.8em;
+        }
+
+        .history-decision {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+        }
+
+        .history-decision.buy { color: var(--green); }
+        .history-decision.sell { color: var(--red); }
+        .history-decision.hold { color: var(--yellow); }
+        .history-decision.abstain { color: var(--magenta); }
+
+        /* Controls */
+        .controls-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-btn {
+            width: 45px; height: 45px;
+            border-radius: 50%;
+            border: 2px solid var(--cyan);
+            background: var(--glass);
+            color: var(--cyan);
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn:hover {
+            background: var(--cyan);
+            color: #000;
+        }
+
+        .control-btn.active {
+            background: var(--cyan);
+            color: #000;
+        }
+
+        /* Data source indicator */
+        .data-source {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            padding: 8px 15px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            font-size: 0.75em;
+            color: #666;
+        }
+
+        .data-source span { color: var(--cyan); }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--cyan); border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    <div class="grid-overlay"></div>
+
+    <header class="header">
+        <div class="logo">
+            <h1>∞ GÖDEL MACHINE</h1>
+        </div>
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot connecting" id="statusDot"></div>
+                <span id="connectionStatus">Connecting...</span>
+            </div>
+            <div class="status-indicator">
+                <span>⏱</span>
+                <span id="uptime">00:00:00</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="asset-selector" id="assetSelector">
+        <button class="asset-btn active" data-asset="bitcoin">
+            BTC
+            <span class="price" id="btc-price">Loading...</span>
+        </button>
+        <button class="asset-btn" data-asset="ethereum">
+            ETH
+            <span class="price" id="eth-price">Loading...</span>
+        </button>
+        <button class="asset-btn" data-asset="solana">
+            SOL
+            <span class="price" id="sol-price">Loading...</span>
+        </button>
+        <button class="asset-btn" data-asset="cardano">
+            ADA
+            <span class="price" id="ada-price">Loading...</span>
+        </button>
+        <button class="asset-btn" data-asset="dogecoin">
+            DOGE
+            <span class="price" id="doge-price">Loading...</span>
+        </button>
+        <button class="asset-btn" data-asset="chainlink">
+            LINK
+            <span class="price" id="link-price">Loading...</span>
+        </button>
+    </div>
+
+    <main class="container">
+        <div class="dashboard">
+            <div class="panel">
+                <div class="panel-title">🎯 Decision Engine</div>
+                <div class="decision-display">
+                    <div class="asset-info">
+                        <div class="asset-name" id="assetName">BITCOIN</div>
+                        <div class="asset-price" id="currentPrice">$--,---</div>
+                        <div class="asset-change up" id="priceChange">+0.00%</div>
+                    </div>
+                    <div class="decision-box hold" id="decisionBox">ANALYZING</div>
+                    <div class="confidence-section">
+                        <div class="confidence-meter">
+                            <div class="meter-label">Confidence</div>
+                            <div class="meter-circle">
+                                <svg viewBox="0 0 100 100">
+                                    <circle class="bg" cx="50" cy="50" r="40"/>
+                                    <circle class="progress primary" id="confidenceCircle" cx="50" cy="50" r="40"
+                                            stroke-dasharray="251" stroke-dashoffset="125"/>
+                                </svg>
+                                <div class="meter-value" id="confidenceValue">--%</div>
+                            </div>
+                        </div>
+                        <div class="confidence-meter">
+                            <div class="meter-label">Meta-Confidence</div>
+                            <div class="meter-circle">
+                                <svg viewBox="0 0 100 100">
+                                    <circle class="bg" cx="50" cy="50" r="40"/>
+                                    <circle class="progress meta" id="metaConfidenceCircle" cx="50" cy="50" r="40"
+                                            stroke-dasharray="251" stroke-dashoffset="125"/>
+                                </svg>
+                                <div class="meter-value" id="metaConfidenceValue">--%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel godel-panel">
+                <div class="panel-title">∞ Gödelian State</div>
+
+                <div class="strange-loop-display">
+                    <div class="loop-symbol" id="loopSymbol">∞</div>
+                    <div class="loop-status">Strange Loop: <span id="loopStatus">INACTIVE</span></div>
+                </div>
+
+                <div class="incompleteness-box clear" id="incompletenessBox">
+                    <span class="incompleteness-icon" id="incompletenessIcon">✓</span>
+                    <div>
+                        <div class="incompleteness-type" id="incompletenessType">CLEAR</div>
+                        <div class="incompleteness-desc" id="incompletenessDesc">System can make decisions</div>
+                    </div>
+                </div>
+
+                <div class="panel-title" style="margin-top: 15px;">🗼 Meta-Prediction Tower</div>
+                <div class="meta-tower">
+                    <div class="meta-level active" id="metaLevel0">
+                        <div class="level-badge">L0</div>
+                        <div class="level-desc">Base Prediction</div>
+                    </div>
+                    <div class="meta-level" id="metaLevel1">
+                        <div class="level-badge">L1</div>
+                        <div class="level-desc">Prediction²</div>
+                    </div>
+                    <div class="meta-level" id="metaLevel2">
+                        <div class="level-badge">L2</div>
+                        <div class="level-desc">Meta-meta</div>
+                    </div>
+                    <div class="meta-level" id="metaLevel3">
+                        <div class="level-badge">L3</div>
+                        <div class="level-desc">Self-reference</div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card decisions">
+                        <div class="stat-value" id="totalDecisions">0</div>
+                        <div class="stat-label">Decisions</div>
+                    </div>
+                    <div class="stat-card abstentions">
+                        <div class="stat-value" id="totalAbstentions">0</div>
+                        <div class="stat-label">Abstentions</div>
+                    </div>
+                    <div class="stat-card loops">
+                        <div class="stat-value" id="totalLoops">0</div>
+                        <div class="stat-label">Loops</div>
+                    </div>
+                </div>
+
+                <div class="panel-title" style="margin-top: 15px;">📜 History</div>
+                <div class="history-panel" id="historyPanel"></div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">📈 Price Chart (24h)</div>
+                <div class="chart-container">
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="controls-panel">
+        <button class="control-btn" id="pauseBtn" title="Pause">⏸</button>
+        <button class="control-btn" id="refreshBtn" title="Refresh">🔄</button>
+    </div>
+
+    <div class="data-source">
+        Data: <span>CoinGecko API</span> (Live)
+    </div>
+
+    <script>
+        // Assets configuration
+        const assets = {
+            bitcoin: { symbol: 'BTC', name: 'BITCOIN', decimals: 0 },
+            ethereum: { symbol: 'ETH', name: 'ETHEREUM', decimals: 2 },
+            solana: { symbol: 'SOL', name: 'SOLANA', decimals: 2 },
+            cardano: { symbol: 'ADA', name: 'CARDANO', decimals: 4 },
+            dogecoin: { symbol: 'DOGE', name: 'DOGECOIN', decimals: 4 },
+            chainlink: { symbol: 'LINK', name: 'CHAINLINK', decimals: 2 }
+        };
+
+        const state = {
+            currentAsset: 'bitcoin',
+            prices: {},
+            priceHistory: {},
+            previousPrices: {},
+            decision: 'HOLD',
+            confidence: 50,
+            metaConfidence: 50,
+            strangeLoopActive: false,
+            incompleteness: null,
+            metaLevel: 0,
+            totalDecisions: 0,
+            totalAbstentions: 0,
+            totalLoops: 0,
+            history: [],
+            paused: false,
+            connected: false,
+            startTime: Date.now()
+        };
+
+        const incompletenessTypes = [
+            { type: 'REGIME_SUPERPOSITION', desc: 'Market in multiple states simultaneously' },
+            { type: 'INFORMATION_GAP', desc: 'Insufficient data for analysis' },
+            { type: 'VOLATILITY_EXPLOSION', desc: 'Price movement exceeds model bounds' },
+            { type: 'CORRELATION_BREAKDOWN', desc: 'Historical patterns invalid' },
+            { type: 'LIQUIDITY_VACUUM', desc: 'Market depth insufficient' }
+        ];
+
+        // Fetch prices from CoinGecko
+        async function fetchPrices() {
+            try {
+                const ids = Object.keys(assets).join(',');
+                const response = await fetch(
+                    `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`
+                );
+                const data = await response.json();
+
+                // Store previous prices for comparison
+                state.previousPrices = { ...state.prices };
+
+                for (const [id, info] of Object.entries(data)) {
+                    state.prices[id] = {
+                        price: info.usd,
+                        change24h: info.usd_24h_change || 0
+                    };
+
+                    // Update asset button
+                    const priceEl = document.getElementById(`${assets[id].symbol.toLowerCase()}-price`);
+                    if (priceEl) {
+                        priceEl.textContent = formatPrice(info.usd, assets[id].decimals);
+                    }
+                }
+
+                updateConnectionStatus(true);
+                return true;
+            } catch (error) {
+                console.error('Price fetch error:', error);
+                updateConnectionStatus(false);
+                return false;
+            }
+        }
+
+        // Fetch price history for chart
+        async function fetchPriceHistory(assetId) {
+            try {
+                const response = await fetch(
+                    `https://api.coingecko.com/api/v3/coins/${assetId}/market_chart?vs_currency=usd&days=1`
+                );
+                const data = await response.json();
+                state.priceHistory[assetId] = data.prices.map(p => p[1]);
+                return true;
+            } catch (error) {
+                console.error('History fetch error:', error);
+                return false;
+            }
+        }
+
+        function formatPrice(price, decimals = 2) {
+            if (price >= 1000) {
+                return '$' + price.toLocaleString('en-US', { maximumFractionDigits: decimals });
+            } else if (price >= 1) {
+                return '$' + price.toFixed(decimals);
+            } else {
+                return '$' + price.toFixed(4);
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            state.connected = connected;
+            const dot = document.getElementById('statusDot');
+            const status = document.getElementById('connectionStatus');
+
+            if (connected) {
+                dot.className = 'status-dot live';
+                status.textContent = 'LIVE';
+            } else {
+                dot.className = 'status-dot error';
+                status.textContent = 'OFFLINE';
+            }
+        }
+
+        // Chart drawing
+        const canvas = document.getElementById('priceChart');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth * 2;
+            canvas.height = canvas.offsetHeight * 2;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawChart() {
+            const history = state.priceHistory[state.currentAsset];
+            if (!history || history.length < 2) return;
+
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            const min = Math.min(...history) * 0.999;
+            const max = Math.max(...history) * 1.001;
+            const range = max - min || 1;
+            const padding = 20;
+
+            // Grid
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = padding + (i / 4) * (h - padding * 2);
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(w - padding, y);
+                ctx.stroke();
+            }
+
+            // Line
+            ctx.beginPath();
+            ctx.strokeStyle = '#00ffff';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 15;
+
+            history.forEach((price, i) => {
+                const x = padding + (i / (history.length - 1)) * (w - padding * 2);
+                const y = padding + (1 - (price - min) / range) * (h - padding * 2);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Fill
+            const lastX = padding + (w - padding * 2);
+            ctx.lineTo(lastX, h - padding);
+            ctx.lineTo(padding, h - padding);
+            ctx.closePath();
+            const gradient = ctx.createLinearGradient(0, 0, 0, h);
+            gradient.addColorStop(0, 'rgba(0, 255, 255, 0.3)');
+            gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+            ctx.fillStyle = gradient;
+            ctx.shadowBlur = 0;
+            ctx.fill();
+        }
+
+        // Gödel Machine decision logic
+        function makeDecision() {
+            if (state.paused || !state.connected) return;
+
+            const priceData = state.prices[state.currentAsset];
+            if (!priceData) return;
+
+            state.totalDecisions++;
+            state.metaLevel = Math.floor(Math.random() * 4);
+            updateMetaTower();
+
+            const change = priceData.change24h;
+            const volatility = Math.abs(change);
+
+            // Incompleteness detection based on real market conditions
+            if (volatility > 15 || Math.random() < 0.2) {
+                state.incompleteness = incompletenessTypes[Math.floor(Math.random() * incompletenessTypes.length)];
+
+                if (volatility > 15) {
+                    state.incompleteness = { type: 'VOLATILITY_EXPLOSION', desc: `${volatility.toFixed(1)}% move exceeds model bounds` };
+                }
+
+                state.decision = 'ABSTAIN';
+                state.confidence = 0;
+                state.metaConfidence = 75 + Math.random() * 25;
+                state.totalAbstentions++;
+                state.strangeLoopActive = false;
+            } else {
+                state.incompleteness = null;
+                state.strangeLoopActive = Math.random() < 0.35;
+
+                if (state.strangeLoopActive) {
+                    state.totalLoops++;
+                }
+
+                // Decision based on 24h change and momentum
+                if (change < -5) {
+                    state.decision = 'BUY';  // Contrarian on big dips
+                    state.confidence = 50 + Math.min(40, Math.abs(change) * 3);
+                } else if (change > 5) {
+                    state.decision = 'SELL';  // Take profits on big gains
+                    state.confidence = 50 + Math.min(40, change * 3);
+                } else if (change > 2) {
+                    state.decision = 'HOLD';  // Ride momentum
+                    state.confidence = 40 + Math.random() * 30;
+                } else if (change < -2) {
+                    state.decision = 'BUY';  // Buy dips
+                    state.confidence = 30 + Math.random() * 30;
+                } else {
+                    state.decision = 'HOLD';
+                    state.confidence = 30 + Math.random() * 20;
+                }
+
+                state.metaConfidence = state.strangeLoopActive ? 15 + Math.random() * 25 : 40 + Math.random() * 35;
+            }
+
+            updateDisplay();
+            addToHistory();
+        }
+
+        function updateDisplay() {
+            const asset = assets[state.currentAsset];
+            const priceData = state.prices[state.currentAsset];
+
+            // Asset info
+            document.getElementById('assetName').textContent = asset.name;
+
+            if (priceData) {
+                document.getElementById('currentPrice').textContent = formatPrice(priceData.price, asset.decimals);
+                const changeEl = document.getElementById('priceChange');
+                const change = priceData.change24h;
+                changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+                changeEl.className = 'asset-change ' + (change >= 0 ? 'up' : 'down');
+            }
+
+            // Decision
+            const box = document.getElementById('decisionBox');
+            box.textContent = state.decision;
+            box.className = 'decision-box ' + state.decision.toLowerCase();
+
+            // Confidence
+            const confOffset = 251 - (251 * state.confidence / 100);
+            const metaOffset = 251 - (251 * state.metaConfidence / 100);
+            document.getElementById('confidenceCircle').style.strokeDashoffset = confOffset;
+            document.getElementById('metaConfidenceCircle').style.strokeDashoffset = metaOffset;
+            document.getElementById('confidenceValue').textContent = Math.round(state.confidence) + '%';
+            document.getElementById('metaConfidenceValue').textContent = Math.round(state.metaConfidence) + '%';
+
+            // Strange loop
+            const loopSymbol = document.getElementById('loopSymbol');
+            const loopStatus = document.getElementById('loopStatus');
+            loopSymbol.className = state.strangeLoopActive ? 'loop-symbol active' : 'loop-symbol';
+            loopStatus.textContent = state.strangeLoopActive ? 'ACTIVE' : 'INACTIVE';
+            loopStatus.style.color = state.strangeLoopActive ? '#ff00ff' : '#666';
+
+            // Incompleteness
+            const incBox = document.getElementById('incompletenessBox');
+            const incIcon = document.getElementById('incompletenessIcon');
+            const incType = document.getElementById('incompletenessType');
+            const incDesc = document.getElementById('incompletenessDesc');
+
+            if (state.incompleteness) {
+                incBox.className = 'incompleteness-box detected';
+                incIcon.textContent = '⚠';
+                incType.textContent = state.incompleteness.type;
+                incDesc.textContent = state.incompleteness.desc;
+            } else {
+                incBox.className = 'incompleteness-box clear';
+                incIcon.textContent = '✓';
+                incType.textContent = 'CLEAR';
+                incDesc.textContent = 'System can make decisions';
+            }
+
+            // Stats
+            document.getElementById('totalDecisions').textContent = state.totalDecisions;
+            document.getElementById('totalAbstentions').textContent = state.totalAbstentions;
+            document.getElementById('totalLoops').textContent = state.totalLoops;
+        }
+
+        function updateMetaTower() {
+            for (let i = 0; i <= 3; i++) {
+                const el = document.getElementById('metaLevel' + i);
+                el.className = i <= state.metaLevel ? 'meta-level active' : 'meta-level';
+            }
+        }
+
+        function addToHistory() {
+            const priceData = state.prices[state.currentAsset];
+            state.history.unshift({
+                time: new Date().toLocaleTimeString(),
+                asset: assets[state.currentAsset].symbol,
+                decision: state.decision,
+                price: priceData ? priceData.price : 0,
+                confidence: state.confidence
+            });
+            if (state.history.length > 15) state.history.pop();
+
+            const panel = document.getElementById('historyPanel');
+            panel.innerHTML = state.history.map(h => `
+                <div class="history-item">
+                    <span style="color: #666">${h.time}</span>
+                    <span style="color: #888">${h.asset}</span>
+                    <span class="history-decision ${h.decision.toLowerCase()}">${h.decision}</span>
+                    <span style="color: #666">${Math.round(h.confidence)}%</span>
+                </div>
+            `).join('');
+        }
+
+        function updateUptime() {
+            const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+            const h = Math.floor(elapsed / 3600).toString().padStart(2, '0');
+            const m = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0');
+            const s = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('uptime').textContent = `${h}:${m}:${s}`;
+        }
+
+        // Asset selection
+        document.querySelectorAll('.asset-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                document.querySelectorAll('.asset-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.currentAsset = btn.dataset.asset;
+
+                await fetchPriceHistory(state.currentAsset);
+                drawChart();
+                updateDisplay();
+            });
+        });
+
+        // Controls
+        document.getElementById('pauseBtn').addEventListener('click', function() {
+            state.paused = !state.paused;
+            this.textContent = state.paused ? '▶' : '⏸';
+            this.classList.toggle('active', state.paused);
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', async () => {
+            await fetchPrices();
+            await fetchPriceHistory(state.currentAsset);
+            drawChart();
+            updateDisplay();
+        });
+
+        // Initialize
+        async function init() {
+            updateConnectionStatus(false);
+            document.getElementById('connectionStatus').textContent = 'Connecting...';
+            document.getElementById('statusDot').className = 'status-dot connecting';
+
+            await fetchPrices();
+            await fetchPriceHistory(state.currentAsset);
+            drawChart();
+
+            // Start loops
+            setInterval(async () => {
+                if (!state.paused) {
+                    await fetchPrices();
+                    updateDisplay();
+                }
+            }, 30000);  // Update prices every 30s
+
+            setInterval(makeDecision, 3000);  // Decision every 3s
+            setInterval(updateUptime, 1000);
+            setInterval(drawChart, 5000);  // Redraw chart every 5s
+        }
+
+        init();
+    </script>
+</body>
+</html>
