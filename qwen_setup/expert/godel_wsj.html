@@ -555,6 +555,51 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
+
+        /* Momentum Banner */
+        .momentum-banner {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: var(--wsj-white);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            font-size: 14px;
+        }
+
+        .momentum-label {
+            color: var(--wsj-gray-light);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+
+        .momentum-asset {
+            font-weight: 700;
+            font-size: 18px;
+            color: var(--wsj-gold);
+        }
+
+        .momentum-value {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 4px;
+        }
+
+        .momentum-value.positive {
+            background: var(--wsj-green);
+        }
+
+        .momentum-value.negative {
+            background: var(--wsj-red);
+        }
+
+        .momentum-timeframe {
+            color: var(--wsj-gray-light);
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -574,9 +619,16 @@
         </div>
     </div>
 
+    <div class="momentum-banner">
+        <span class="momentum-label">Highest 5-Min Momentum</span>
+        <span class="momentum-asset" id="momentum-asset">--</span>
+        <span class="momentum-value positive" id="momentum-value">+0.00%</span>
+        <span class="momentum-timeframe">Last 5 minutes</span>
+    </div>
+
     <main class="container">
         <div class="section-subheader">Crypto Assets</div>
-        <div class="asset-selector" id="asset-selector">
+        <div class="asset-selector" id="crypto-selector">
             <button class="asset-btn active" data-asset="bitcoin">BTC</button>
             <button class="asset-btn" data-asset="ethereum">ETH</button>
             <button class="asset-btn" data-asset="solana">SOL</button>
@@ -586,7 +638,7 @@
             <button class="asset-btn" data-asset="chainlink">LINK</button>
         </div>
         <div class="section-subheader" style="margin-top: 16px;">Precious Metals (Futures)</div>
-        <div class="asset-selector">
+        <div class="asset-selector" id="metals-selector">
             <button class="asset-btn" data-asset="gold">GOLD</button>
             <button class="asset-btn" data-asset="silver">SILVER</button>
         </div>
@@ -806,29 +858,12 @@
             }
         }
 
-        // Fetch metal prices from free metals API
-        async function fetchMetalPrices() {
-            try {
-                // Use metalpriceapi.com free tier or fallback to realistic simulation
-                const response = await fetch(
-                    'https://api.metalpriceapi.com/v1/latest?api_key=demo&base=USD&currencies=XAU,XAG'
-                );
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.rates) {
-                        // XAU and XAG are in USD per troy ounce (inverted)
-                        lastMetalPrices.gold = 1 / data.rates.XAU;
-                        lastMetalPrices.silver = 1 / data.rates.XAG;
-                    }
-                }
-            } catch (error) {
-                console.log('Using simulated metal prices');
-            }
-
+        // Fetch metal prices - using realistic simulation based on market prices
+        function fetchMetalPrices() {
             // Apply realistic market simulation with slight movements
-            const goldVolatility = 0.0008; // ~0.08% per tick
-            const silverVolatility = 0.0015; // ~0.15% per tick (silver is more volatile)
+            // Base prices: Gold ~$2650/oz, Silver ~$31.50/oz (Feb 2025 levels)
+            const goldVolatility = 0.0012; // ~0.12% per tick
+            const silverVolatility = 0.0020; // ~0.20% per tick (silver is more volatile)
 
             const goldMove = (Math.random() - 0.5) * 2 * goldVolatility;
             const silverMove = (Math.random() - 0.5) * 2 * silverVolatility;
@@ -839,16 +874,17 @@
             lastMetalPrices.gold = goldPrice;
             lastMetalPrices.silver = silverPrice;
 
-            // Calculate 24h change based on history or simulate
+            // Calculate change based on session history
             const goldHistory = priceHistory['gold'];
             const silverHistory = priceHistory['silver'];
 
+            // Use first price in history as baseline, or simulate 24h change
             const goldChange = goldHistory.length > 0
                 ? ((goldPrice - goldHistory[0].price) / goldHistory[0].price) * 100
-                : (Math.random() - 0.5) * 2;
+                : (Math.random() - 0.3) * 1.5; // Slight bullish bias for gold
             const silverChange = silverHistory.length > 0
                 ? ((silverPrice - silverHistory[0].price) / silverHistory[0].price) * 100
-                : (Math.random() - 0.5) * 3;
+                : (Math.random() - 0.4) * 2.5;
 
             allPrices['gold'] = { price: goldPrice, change: goldChange };
             allPrices['silver'] = { price: silverPrice, change: silverChange };
@@ -867,12 +903,14 @@
 
         // Fetch all prices
         async function fetchPrices() {
-            await Promise.all([fetchCryptoPrices(), fetchMetalPrices()]);
+            await fetchCryptoPrices();
+            fetchMetalPrices(); // Sync function now
 
             updateTicker();
             updateDisplay();
             updateChart();
             runGodelAnalysis();
+            updateMomentumBanner();
         }
 
         // Update ticker bar
@@ -1220,8 +1258,8 @@
             }
         }
 
-        // Asset selector
-        document.getElementById('asset-selector').addEventListener('click', (e) => {
+        // Asset selector - handle clicks on both crypto and metals selectors
+        function handleAssetClick(e) {
             if (e.target.classList.contains('asset-btn')) {
                 document.querySelectorAll('.asset-btn').forEach(btn => btn.classList.remove('active'));
                 e.target.classList.add('active');
@@ -1231,7 +1269,43 @@
                 runGodelAnalysis();
                 addLogEntry(`Switched to ${assets[currentAsset].name} analysis`);
             }
-        });
+        }
+
+        document.getElementById('crypto-selector').addEventListener('click', handleAssetClick);
+        document.getElementById('metals-selector').addEventListener('click', handleAssetClick);
+
+        // Calculate and display highest 5-minute momentum
+        function updateMomentumBanner() {
+            const fiveMinAgo = Date.now() - (5 * 60 * 1000);
+            let highestMomentum = { asset: null, value: -Infinity };
+
+            Object.keys(assets).forEach(asset => {
+                const history = priceHistory[asset];
+                if (history.length < 2) return;
+
+                // Find price from ~5 minutes ago
+                const recentHistory = history.filter(h => h.time >= fiveMinAgo);
+                if (recentHistory.length < 1) return;
+
+                const oldPrice = recentHistory[0].price;
+                const currentPrice = history[history.length - 1].price;
+                const momentum = ((currentPrice - oldPrice) / oldPrice) * 100;
+
+                if (Math.abs(momentum) > Math.abs(highestMomentum.value) ||
+                    (momentum > 0 && highestMomentum.value <= 0)) {
+                    highestMomentum = { asset, value: momentum };
+                }
+            });
+
+            if (highestMomentum.asset) {
+                const info = assets[highestMomentum.asset];
+                document.getElementById('momentum-asset').textContent = info.symbol;
+
+                const valueEl = document.getElementById('momentum-value');
+                valueEl.textContent = formatPercent(highestMomentum.value);
+                valueEl.className = 'momentum-value ' + (highestMomentum.value >= 0 ? 'positive' : 'negative');
+            }
+        }
 
         // Handle window resize
         window.addEventListener('resize', () => {
