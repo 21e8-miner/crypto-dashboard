@@ -820,18 +820,30 @@
         setInterval(updateTime, 1000);
         updateTime();
 
-        // Format currency
+        // Format currency - with null/NaN safety
         function formatPrice(price, decimals = 2) {
+            if (price == null || isNaN(price) || !isFinite(price)) {
+                return '$--';
+            }
             if (price >= 1000) {
                 return '$' + price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
             return '$' + price.toFixed(decimals);
         }
 
-        // Format percentage
+        // Format percentage - with null/NaN safety
         function formatPercent(value) {
+            if (value == null || isNaN(value) || !isFinite(value)) {
+                return '+0.00%';
+            }
             const sign = value >= 0 ? '+' : '';
             return sign + value.toFixed(2) + '%';
+        }
+
+        // Safe number helper
+        function safeNumber(val, fallback = 0) {
+            if (val == null || isNaN(val) || !isFinite(val)) return fallback;
+            return val;
         }
 
         // Fetch crypto prices from CoinGecko
@@ -918,16 +930,31 @@
             });
         }
 
-        // Fetch all prices
+        // Fetch all prices with error handling
         async function fetchPrices() {
-            await fetchCryptoPrices();
-            fetchMetalPrices(); // Sync function now
+            try {
+                await fetchCryptoPrices();
+            } catch (err) {
+                console.error('Crypto fetch error:', err);
+                addLogEntry('Crypto API error - retrying...');
+            }
 
-            updateTicker();
-            updateDisplay();
-            updateChart();
-            runGodelAnalysis();
-            updateMomentumBanner();
+            try {
+                fetchMetalPrices();
+            } catch (err) {
+                console.error('Metal fetch error:', err);
+            }
+
+            // Update UI even if some fetches failed
+            try {
+                updateTicker();
+                updateDisplay();
+                updateChart();
+                runGodelAnalysis();
+                updateMomentumBanner();
+            } catch (err) {
+                console.error('UI update error:', err);
+            }
         }
 
         // Update ticker bar
@@ -978,14 +1005,22 @@
         // Draw chart
         function updateChart() {
             const canvas = document.getElementById('price-chart');
+            if (!canvas) return;
+
             const ctx = canvas.getContext('2d');
-            const history = priceHistory[currentAsset];
+            if (!ctx) return;
+
+            const history = priceHistory[currentAsset] || [];
 
             // Set canvas size
-            const rect = canvas.parentElement.getBoundingClientRect();
-            canvas.width = rect.width * window.devicePixelRatio;
-            canvas.height = rect.height * window.devicePixelRatio;
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            const parent = canvas.parentElement;
+            if (!parent) return;
+
+            const rect = parent.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
 
             const width = rect.width;
             const height = rect.height;
@@ -994,7 +1029,7 @@
             ctx.fillStyle = '#FFFFFF';
             ctx.fillRect(0, 0, width, height);
 
-            if (history.length < 2) {
+            if (!history || history.length < 2) {
                 ctx.fillStyle = '#666666';
                 ctx.font = '14px Libre Franklin';
                 ctx.textAlign = 'center';
@@ -1002,11 +1037,19 @@
                 return;
             }
 
-            // Calculate bounds
-            const prices = history.map(h => h.price);
+            // Calculate bounds with safety
+            const prices = history.map(h => safeNumber(h.price, 0)).filter(p => p > 0);
+            if (prices.length < 2) {
+                ctx.fillStyle = '#666666';
+                ctx.font = '14px Libre Franklin';
+                ctx.textAlign = 'center';
+                ctx.fillText('Waiting for valid prices...', width / 2, height / 2);
+                return;
+            }
+
             const minPrice = Math.min(...prices) * 0.999;
             const maxPrice = Math.max(...prices) * 1.001;
-            const priceRange = maxPrice - minPrice || 1;
+            const priceRange = Math.max(maxPrice - minPrice, 0.01); // Ensure non-zero
 
             const padding = { top: 20, right: 60, bottom: 30, left: 20 };
             const chartWidth = width - padding.left - padding.right;
@@ -1031,15 +1074,20 @@
                 ctx.fillText(formatPrice(price, assets[currentAsset].decimals), width - 5, y + 4);
             }
 
-            // Draw price line
-            const isPositive = history[history.length - 1].price >= history[0].price;
+            // Draw price line with safety checks
+            const firstPrice = safeNumber(history[0].price, 1);
+            const lastPrice = safeNumber(history[history.length - 1].price, firstPrice);
+            const isPositive = lastPrice >= firstPrice;
             ctx.strokeStyle = isPositive ? '#14853D' : '#C72C41';
             ctx.lineWidth = 2;
             ctx.beginPath();
 
+            const historyLen = history.length;
             history.forEach((point, i) => {
-                const x = padding.left + (i / (history.length - 1)) * chartWidth;
-                const y = padding.top + ((maxPrice - point.price) / priceRange) * chartHeight;
+                const pointPrice = safeNumber(point.price, firstPrice);
+                const divisor = Math.max(historyLen - 1, 1);
+                const x = padding.left + (i / divisor) * chartWidth;
+                const y = padding.top + ((maxPrice - pointPrice) / priceRange) * chartHeight;
 
                 if (i === 0) {
                     ctx.moveTo(x, y);
@@ -1066,9 +1114,8 @@
             ctx.fill();
 
             // Current price dot
-            const lastPoint = history[history.length - 1];
             const lastX = padding.left + chartWidth;
-            const lastY = padding.top + ((maxPrice - lastPoint.price) / priceRange) * chartHeight;
+            const lastY = padding.top + ((maxPrice - lastPrice) / priceRange) * chartHeight;
 
             ctx.beginPath();
             ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
@@ -1078,20 +1125,31 @@
 
         // Generate Gödel number from price data
         function generateGodelNumber(prices) {
+            if (!prices || prices.length === 0) return '--';
+
             const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29];
             let godel = 1n;
 
-            prices.slice(-10).forEach((p, i) => {
-                const encoded = Math.floor(Math.abs(p.price * 100)) % 100;
-                godel *= BigInt(primes[i]) ** BigInt(encoded);
-            });
+            try {
+                const recentPrices = prices.slice(-10);
+                recentPrices.forEach((p, i) => {
+                    if (i < primes.length && p && p.price != null) {
+                        const priceVal = safeNumber(p.price, 1);
+                        const encoded = Math.floor(Math.abs(priceVal * 100)) % 100;
+                        godel *= BigInt(primes[i]) ** BigInt(Math.max(1, encoded));
+                    }
+                });
 
-            // Return shortened representation
-            const str = godel.toString();
-            if (str.length > 12) {
-                return str.substring(0, 6) + '...' + str.substring(str.length - 6);
+                // Return shortened representation
+                const str = godel.toString();
+                if (str.length > 12) {
+                    return str.substring(0, 6) + '...' + str.substring(str.length - 6);
+                }
+                return str;
+            } catch (e) {
+                console.error('Gödel number generation error:', e);
+                return '--';
             }
-            return str;
         }
 
         // Calculate forward expected returns
@@ -1137,22 +1195,31 @@
             const data = allPrices[currentAsset];
             const history = priceHistory[currentAsset];
 
-            if (!data || history.length < 2) return;
+            // Validate we have enough data
+            if (!data || !history || history.length < 2) return;
 
-            const price = data.price;
-            const change = data.change;
+            const price = safeNumber(data.price, 1);
+            const change = safeNumber(data.change, 0);
 
-            // Calculate volatility from history
+            // Calculate volatility from history with safety checks
             let volatility = 0;
             if (history.length > 1) {
                 const returns = [];
                 for (let i = 1; i < history.length; i++) {
-                    const ret = (history[i].price - history[i-1].price) / history[i-1].price * 100;
-                    returns.push(ret);
+                    const prevPrice = safeNumber(history[i-1].price, 1);
+                    const currPrice = safeNumber(history[i].price, prevPrice);
+                    if (prevPrice !== 0) {
+                        const ret = (currPrice - prevPrice) / prevPrice * 100;
+                        if (isFinite(ret)) returns.push(ret);
+                    }
                 }
-                const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
-                volatility = Math.sqrt(returns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / returns.length);
+                if (returns.length > 0) {
+                    const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+                    const variance = returns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / returns.length;
+                    volatility = Math.sqrt(Math.max(0, variance)); // Ensure non-negative
+                }
             }
+            volatility = safeNumber(volatility, 0);
 
             // Expected returns
             const expectedReturns = calculateExpectedReturns(price, change, volatility);
@@ -1212,19 +1279,27 @@
         // Update returns table
         function updateReturnsTable(returns) {
             const tbody = document.getElementById('returns-body');
+            if (!tbody || !returns) return;
+
+            const info = assets[currentAsset];
+            if (!info) return;
+
             tbody.innerHTML = returns.map(r => {
-                const returnClass = r.return >= 0 ? 'positive' : 'negative';
-                const info = assets[currentAsset];
+                const retValue = safeNumber(r.return, 0);
+                const returnClass = retValue >= 0 ? 'positive' : 'negative';
+                const confidence = safeNumber(r.confidence, 0.5);
+                const priceTarget = safeNumber(r.priceTarget, 0);
+
                 return `
                     <tr>
-                        <td class="timeframe">${r.timeframe}</td>
-                        <td class="value ${returnClass}">${formatPercent(r.return)}</td>
-                        <td class="value">${formatPrice(r.priceTarget, info.decimals)}</td>
+                        <td class="timeframe">${r.timeframe || '--'}</td>
+                        <td class="value ${returnClass}">${formatPercent(retValue)}</td>
+                        <td class="value">${formatPrice(priceTarget, info.decimals)}</td>
                         <td class="confidence">
                             <span class="confidence-bar">
-                                <span class="confidence-fill" style="width: ${r.confidence * 100}%"></span>
+                                <span class="confidence-fill" style="width: ${Math.min(100, confidence * 100)}%"></span>
                             </span>
-                            ${(r.confidence * 100).toFixed(0)}%
+                            ${(confidence * 100).toFixed(0)}%
                         </td>
                     </tr>
                 `;
@@ -1234,10 +1309,12 @@
         // Update meta levels
         function updateMetaLevels(levels) {
             const container = document.getElementById('meta-levels');
+            if (!container || !levels) return;
+
             container.innerHTML = levels.map(l => `
                 <div class="meta-level">
-                    <span class="level-name">${l.name}</span>
-                    <span class="level-value">${l.value}</span>
+                    <span class="level-name">${l.name || '--'}</span>
+                    <span class="level-value">${l.value || '--'}</span>
                 </div>
             `).join('');
         }
@@ -1245,10 +1322,12 @@
         // Update incompleteness indicators
         function updateIncompleteness(items) {
             const container = document.getElementById('incompleteness-list');
+            if (!container || !items) return;
+
             container.innerHTML = items.map(item => `
                 <div class="incompleteness-item">
                     <span class="incompleteness-indicator ${item.active ? 'active' : 'inactive'}"></span>
-                    <span class="incompleteness-name">${item.name}</span>
+                    <span class="incompleteness-name">${item.name || '--'}</span>
                     <span class="incompleteness-status" style="color: ${item.active ? '#C72C41' : '#14853D'}">
                         ${item.active ? 'DETECTED' : 'CLEAR'}
                     </span>
@@ -1256,9 +1335,11 @@
             `).join('');
         }
 
-        // Add log entry
+        // Add log entry with safety
         function addLogEntry(message) {
             const log = document.getElementById('improvement-log');
+            if (!log) return;
+
             const now = new Date();
             const timestamp = now.toTimeString().split(' ')[0];
 
@@ -1277,48 +1358,73 @@
 
         // Asset selector - handle clicks on both crypto and metals selectors
         function handleAssetClick(e) {
-            if (e.target.classList.contains('asset-btn')) {
-                document.querySelectorAll('.asset-btn').forEach(btn => btn.classList.remove('active'));
-                e.target.classList.add('active');
-                currentAsset = e.target.dataset.asset;
-                updateDisplay();
-                updateChart();
-                runGodelAnalysis();
-                addLogEntry(`Switched to ${assets[currentAsset].name} analysis`);
+            try {
+                if (e.target.classList.contains('asset-btn')) {
+                    const newAsset = e.target.dataset.asset;
+
+                    // Validate the asset exists
+                    if (!assets[newAsset]) {
+                        console.error('Unknown asset:', newAsset);
+                        return;
+                    }
+
+                    document.querySelectorAll('.asset-btn').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+                    currentAsset = newAsset;
+                    updateDisplay();
+                    updateChart();
+                    runGodelAnalysis();
+                    addLogEntry(`Switched to ${assets[currentAsset].name} analysis`);
+                }
+            } catch (err) {
+                console.error('Asset click error:', err);
             }
         }
 
-        document.getElementById('crypto-selector').addEventListener('click', handleAssetClick);
-        document.getElementById('metals-selector').addEventListener('click', handleAssetClick);
+        // Safely attach event listeners
+        const cryptoSelector = document.getElementById('crypto-selector');
+        const metalsSelector = document.getElementById('metals-selector');
+
+        if (cryptoSelector) cryptoSelector.addEventListener('click', handleAssetClick);
+        if (metalsSelector) metalsSelector.addEventListener('click', handleAssetClick);
 
         // Calculate and display highest 5-minute momentum
         function updateMomentumBanner() {
             const fiveMinAgo = Date.now() - (5 * 60 * 1000);
-            let highestMomentum = { asset: null, value: -Infinity };
+            let highestMomentum = { asset: null, value: 0 };
 
             Object.keys(assets).forEach(asset => {
                 const history = priceHistory[asset];
-                if (history.length < 2) return;
+                if (!history || history.length < 2) return;
 
                 // Find price from ~5 minutes ago
-                const recentHistory = history.filter(h => h.time >= fiveMinAgo);
+                const recentHistory = history.filter(h => h && h.time >= fiveMinAgo);
                 if (recentHistory.length < 1) return;
 
-                const oldPrice = recentHistory[0].price;
-                const currentPrice = history[history.length - 1].price;
+                const oldPrice = safeNumber(recentHistory[0].price, 0);
+                const currentPrice = safeNumber(history[history.length - 1].price, 0);
+
+                // Skip if prices are invalid
+                if (oldPrice <= 0 || currentPrice <= 0) return;
+
                 const momentum = ((currentPrice - oldPrice) / oldPrice) * 100;
 
+                // Skip if momentum is invalid
+                if (!isFinite(momentum)) return;
+
+                // Prefer highest absolute momentum, with tie-breaker for positive
                 if (Math.abs(momentum) > Math.abs(highestMomentum.value) ||
-                    (momentum > 0 && highestMomentum.value <= 0)) {
+                    (Math.abs(momentum) === Math.abs(highestMomentum.value) && momentum > highestMomentum.value)) {
                     highestMomentum = { asset, value: momentum };
                 }
             });
 
-            if (highestMomentum.asset) {
-                const info = assets[highestMomentum.asset];
-                document.getElementById('momentum-asset').textContent = info.symbol;
+            const assetEl = document.getElementById('momentum-asset');
+            const valueEl = document.getElementById('momentum-value');
 
-                const valueEl = document.getElementById('momentum-value');
+            if (highestMomentum.asset && assetEl && valueEl) {
+                const info = assets[highestMomentum.asset];
+                assetEl.textContent = info.symbol;
                 valueEl.textContent = formatPercent(highestMomentum.value);
                 valueEl.className = 'momentum-value ' + (highestMomentum.value >= 0 ? 'positive' : 'negative');
             }
