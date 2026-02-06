@@ -786,22 +786,70 @@
         let allPrices = {};
         let chartInstance = null;
 
-        // Metal prices - current spot prices (Feb 2025)
-        let lastMetalPrices = { gold: 2890, silver: 32.50 };
-        // Simulated 24h change (persists for session, realistic daily moves)
-        let metalDailyChange = {
-            gold: (Math.random() - 0.5) * 1.8,   // Gold: typically -0.9% to +0.9% daily
-            silver: (Math.random() - 0.5) * 3.5  // Silver: typically -1.75% to +1.75% daily
-        };
+        // Metal prices state
+        let lastMetalPrices = { gold: null, silver: null };
+        let metalPreviousPrices = { gold: null, silver: null }; // For 24h change calc
+        let metalApiIndex = 0; // Rotate through APIs
+        let metalLastFetchTime = 0;
 
         // Initialize price history for all assets
         Object.keys(assets).forEach(asset => {
             priceHistory[asset] = [];
         });
 
-        // Initialize metals immediately so they show on first render
-        allPrices['gold'] = { price: lastMetalPrices.gold, change: metalDailyChange.gold };
-        allPrices['silver'] = { price: lastMetalPrices.silver, change: metalDailyChange.silver };
+        // Metal API sources (rotate through these)
+        const metalApis = [
+            {
+                name: 'CoinGecko-PAXG',
+                fetch: async () => {
+                    // PAXG = 1 oz gold, use it as gold proxy
+                    const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd&include_24hr_change=true');
+                    const data = await resp.json();
+                    if (data['pax-gold']) {
+                        return {
+                            gold: { price: data['pax-gold'].usd, change: data['pax-gold'].usd_24h_change || 0 },
+                            silver: null // PAXG doesn't have silver
+                        };
+                    }
+                    throw new Error('No PAXG data');
+                }
+            },
+            {
+                name: 'Metals.live',
+                fetch: async () => {
+                    const resp = await fetch('https://api.metals.live/v1/spot');
+                    const data = await resp.json();
+                    // Response is array: [{gold: price, silver: price, ...}]
+                    if (Array.isArray(data) && data.length > 0) {
+                        const spot = data[0];
+                        return {
+                            gold: spot.gold ? { price: spot.gold, change: null } : null,
+                            silver: spot.silver ? { price: spot.silver, change: null } : null
+                        };
+                    }
+                    throw new Error('No metals.live data');
+                }
+            },
+            {
+                name: 'GoldAPI-proxy',
+                fetch: async () => {
+                    // Try metals.dev free endpoint
+                    const resp = await fetch('https://api.metals.dev/v1/latest?api_key=demo&currency=USD&unit=oz');
+                    const data = await resp.json();
+                    if (data.metals) {
+                        return {
+                            gold: data.metals.gold ? { price: data.metals.gold, change: null } : null,
+                            silver: data.metals.silver ? { price: data.metals.silver, change: null } : null
+                        };
+                    }
+                    throw new Error('No metals.dev data');
+                }
+            }
+        ];
+
+        // Initialize with placeholder until first API fetch
+        allPrices['gold'] = { price: 2890, change: 0 };
+        allPrices['silver'] = { price: 32.50, change: 0 };
 
         // Update time display
         function updateTime() {
@@ -881,69 +929,118 @@
             }
         }
 
-        // Fetch metal prices - realistic simulation based on current spot prices
-        function fetchMetalPrices() {
-            // Gold: ~$2,890/oz, Silver: ~$32.50/oz (Feb 2025 spot prices)
-            // Apply realistic intraday tick movements
-            const goldTickVol = 0.0008;  // ~0.08% per 30-sec tick (~$2.30)
-            const silverTickVol = 0.0015; // ~0.15% per 30-sec tick (~$0.05)
+        // Fetch metal prices from multiple rotating APIs
+        async function fetchMetalPrices() {
+            const maxAttempts = metalApis.length;
+            let goldData = null;
+            let silverData = null;
 
-            // Random walk with slight mean reversion
-            const goldMove = (Math.random() - 0.5) * 2 * goldTickVol;
-            const silverMove = (Math.random() - 0.5) * 2 * silverTickVol;
+            // Try APIs in rotation until we get data
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                const apiIndex = (metalApiIndex + attempt) % metalApis.length;
+                const api = metalApis[apiIndex];
 
-            // Update prices
-            lastMetalPrices.gold = lastMetalPrices.gold * (1 + goldMove);
-            lastMetalPrices.silver = lastMetalPrices.silver * (1 + silverMove);
+                try {
+                    addLogEntry(`Fetching metals from ${api.name}...`);
+                    const result = await api.fetch();
 
-            // Keep prices in realistic bounds (prevent drift)
-            lastMetalPrices.gold = Math.max(2800, Math.min(3000, lastMetalPrices.gold));
-            lastMetalPrices.silver = Math.max(30, Math.min(36, lastMetalPrices.silver));
+                    if (result.gold && result.gold.price > 0) {
+                        goldData = result.gold;
+                        addLogEntry(`Gold: $${result.gold.price.toFixed(2)} (${api.name})`);
+                    }
+                    if (result.silver && result.silver.price > 0) {
+                        silverData = result.silver;
+                        addLogEntry(`Silver: $${result.silver.price.toFixed(2)} (${api.name})`);
+                    }
 
-            // Slightly drift the daily change too (simulates ongoing market movement)
-            metalDailyChange.gold += (Math.random() - 0.5) * 0.02;
-            metalDailyChange.silver += (Math.random() - 0.5) * 0.04;
+                    // If we got at least gold, move to next API for next fetch (rotation)
+                    if (goldData) {
+                        metalApiIndex = (apiIndex + 1) % metalApis.length;
+                        break;
+                    }
+                } catch (err) {
+                    console.log(`${api.name} failed:`, err.message);
+                }
+            }
 
-            // Keep daily changes in realistic bounds
-            metalDailyChange.gold = Math.max(-2, Math.min(2, metalDailyChange.gold));
-            metalDailyChange.silver = Math.max(-4, Math.min(4, metalDailyChange.silver));
+            // Update gold price
+            if (goldData && goldData.price > 0) {
+                // Calculate 24h change if we have previous price
+                let goldChange = goldData.change;
+                if (goldChange == null && metalPreviousPrices.gold) {
+                    goldChange = ((goldData.price - metalPreviousPrices.gold) / metalPreviousPrices.gold) * 100;
+                }
+                if (goldChange == null) goldChange = 0;
 
-            // Update allPrices with current values
-            allPrices['gold'] = {
-                price: lastMetalPrices.gold,
-                change: metalDailyChange.gold
-            };
-            allPrices['silver'] = {
-                price: lastMetalPrices.silver,
-                change: metalDailyChange.silver
-            };
+                lastMetalPrices.gold = goldData.price;
+                if (!metalPreviousPrices.gold) metalPreviousPrices.gold = goldData.price;
+
+                allPrices['gold'] = {
+                    price: goldData.price,
+                    change: safeNumber(goldChange, 0)
+                };
+            }
+
+            // Update silver price
+            if (silverData && silverData.price > 0) {
+                let silverChange = silverData.change;
+                if (silverChange == null && metalPreviousPrices.silver) {
+                    silverChange = ((silverData.price - metalPreviousPrices.silver) / metalPreviousPrices.silver) * 100;
+                }
+                if (silverChange == null) silverChange = 0;
+
+                lastMetalPrices.silver = silverData.price;
+                if (!metalPreviousPrices.silver) metalPreviousPrices.silver = silverData.price;
+
+                allPrices['silver'] = {
+                    price: silverData.price,
+                    change: safeNumber(silverChange, 0)
+                };
+            }
+
+            // If silver still not available, estimate from gold/silver ratio (~88:1 historically)
+            if (!silverData && goldData) {
+                const estimatedSilver = goldData.price / 88;
+                const silverChange = allPrices['silver']?.change || 0;
+                allPrices['silver'] = {
+                    price: estimatedSilver,
+                    change: silverChange
+                };
+                lastMetalPrices.silver = estimatedSilver;
+                addLogEntry(`Silver estimated from ratio: $${estimatedSilver.toFixed(2)}`);
+            }
 
             // Add to history for charting
             ['gold', 'silver'].forEach(metal => {
-                priceHistory[metal].push({
-                    time: Date.now(),
-                    price: allPrices[metal].price
-                });
-                if (priceHistory[metal].length > 100) {
-                    priceHistory[metal].shift();
+                if (allPrices[metal] && allPrices[metal].price > 0) {
+                    priceHistory[metal].push({
+                        time: Date.now(),
+                        price: allPrices[metal].price
+                    });
+                    if (priceHistory[metal].length > 100) {
+                        priceHistory[metal].shift();
+                    }
                 }
             });
+
+            metalLastFetchTime = Date.now();
         }
 
         // Fetch all prices with error handling
         async function fetchPrices() {
-            try {
-                await fetchCryptoPrices();
-            } catch (err) {
+            // Fetch crypto and metals in parallel
+            const cryptoPromise = fetchCryptoPrices().catch(err => {
                 console.error('Crypto fetch error:', err);
-                addLogEntry('Crypto API error - retrying...');
-            }
+                addLogEntry('Crypto API error - using cached');
+            });
 
-            try {
-                fetchMetalPrices();
-            } catch (err) {
+            const metalPromise = fetchMetalPrices().catch(err => {
                 console.error('Metal fetch error:', err);
-            }
+                addLogEntry('Metals API error - using cached');
+            });
+
+            // Wait for both
+            await Promise.all([cryptoPromise, metalPromise]);
 
             // Update UI even if some fetches failed
             try {
