@@ -847,9 +847,9 @@
             }
         ];
 
-        // Initialize with placeholder until first API fetch
-        allPrices['gold'] = { price: 2890, change: 0 };
-        allPrices['silver'] = { price: 32.50, change: 0 };
+        // Initialize with placeholder until first API fetch (marked as placeholder)
+        allPrices['gold'] = { price: 2890, change: 0, isPlaceholder: true };
+        allPrices['silver'] = { price: 32.50, change: 0, isPlaceholder: true };
 
         // Update time display
         function updateTime() {
@@ -965,6 +965,11 @@
 
             // Update gold price
             if (goldData && goldData.price > 0) {
+                // If transitioning from placeholder, clear history to avoid fake momentum
+                if (allPrices['gold']?.isPlaceholder) {
+                    priceHistory['gold'] = [];
+                }
+
                 // Calculate 24h change if we have previous price
                 let goldChange = goldData.change;
                 if (goldChange == null && metalPreviousPrices.gold) {
@@ -977,12 +982,18 @@
 
                 allPrices['gold'] = {
                     price: goldData.price,
-                    change: safeNumber(goldChange, 0)
+                    change: safeNumber(goldChange, 0),
+                    isPlaceholder: false
                 };
             }
 
             // Update silver price
             if (silverData && silverData.price > 0) {
+                // If transitioning from placeholder, clear history to avoid fake momentum
+                if (allPrices['silver']?.isPlaceholder) {
+                    priceHistory['silver'] = [];
+                }
+
                 let silverChange = silverData.change;
                 if (silverChange == null && metalPreviousPrices.silver) {
                     silverChange = ((silverData.price - metalPreviousPrices.silver) / metalPreviousPrices.silver) * 100;
@@ -994,17 +1005,24 @@
 
                 allPrices['silver'] = {
                     price: silverData.price,
-                    change: safeNumber(silverChange, 0)
+                    change: safeNumber(silverChange, 0),
+                    isPlaceholder: false
                 };
             }
 
             // If silver still not available, estimate from gold/silver ratio (~88:1 historically)
             if (!silverData && goldData) {
+                // If transitioning from placeholder, clear history
+                if (allPrices['silver']?.isPlaceholder) {
+                    priceHistory['silver'] = [];
+                }
+
                 const estimatedSilver = goldData.price / 88;
-                const silverChange = allPrices['silver']?.change || 0;
+                const silverChange = allPrices['silver']?.isPlaceholder ? 0 : (allPrices['silver']?.change || 0);
                 allPrices['silver'] = {
                     price: estimatedSilver,
-                    change: silverChange
+                    change: silverChange,
+                    isPlaceholder: false
                 };
                 lastMetalPrices.silver = estimatedSilver;
                 addLogEntry(`Silver estimated from ratio: $${estimatedSilver.toFixed(2)}`);
@@ -1491,7 +1509,11 @@
             let highestMomentum = { asset: null, value: 0 };
 
             Object.keys(assets).forEach(asset => {
+                // Skip assets still on placeholder data
+                if (allPrices[asset]?.isPlaceholder) return;
+
                 const history = priceHistory[asset];
+                // Need at least 2 real data points for meaningful momentum
                 if (!history || history.length < 2) return;
 
                 // Find price from ~5 minutes ago
@@ -1506,8 +1528,8 @@
 
                 const momentum = ((currentPrice - oldPrice) / oldPrice) * 100;
 
-                // Skip if momentum is invalid
-                if (!isFinite(momentum)) return;
+                // Skip if momentum is invalid or unrealistic (>20% in 5 min is suspicious)
+                if (!isFinite(momentum) || Math.abs(momentum) > 20) return;
 
                 // Prefer highest absolute momentum, with tie-breaker for positive
                 if (Math.abs(momentum) > Math.abs(highestMomentum.value) ||
