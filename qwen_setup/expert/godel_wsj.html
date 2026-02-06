@@ -972,6 +972,7 @@
                 const response = await fetch(
                     `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`
                 );
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
 
                 cryptoAssets.forEach(asset => {
@@ -1445,12 +1446,16 @@
 
             // Incompleteness detection - all 7 types from GODEL_README.md
             // Calculate additional metrics for detection
-            const rsi = 50 + change * 2; // Simulated RSI
-            const macd = change > 0 ? Math.abs(change) * 0.1 : -Math.abs(change) * 0.1;
-            const momentum = change;
+            const rsi = 50 + change * 2; // Simulated RSI based on momentum
 
-            // Check for indicator contradiction (RSI vs MACD disagreement)
-            const indicatorContradiction = (rsi > 70 && macd < 0) || (rsi < 30 && macd > 0);
+            // MACD uses lagged data - simulate with historical average
+            const recentChange = history.length >= 3
+                ? ((safeNumber(history[history.length-1].price, 1) - safeNumber(history[history.length-3].price, 1)) / safeNumber(history[history.length-3].price, 1)) * 100
+                : change;
+            const macdSignal = change - recentChange; // Divergence between current and recent
+
+            // Check for indicator contradiction (RSI overbought but momentum fading, or vice versa)
+            const indicatorContradiction = (rsi > 65 && macdSignal < -0.5) || (rsi < 35 && macdSignal > 0.5);
 
             // Check for historical novelty (price at extreme deviation from mean)
             const priceValues = history.map(h => safeNumber(h.price, 0)).filter(p => p > 0);
@@ -1458,10 +1463,10 @@
             const priceDeviation = Math.abs(price - meanPrice) / meanPrice * 100;
             const historicalNovelty = priceDeviation > 5 || history.length < 5;
 
-            // Self-reference paradox: prediction changes outcome (meta-prediction divergence)
-            const metaL0 = change > 0 ? 1 : -1;
-            const metaL1 = change * 0.15;
-            const selfReferenceParadox = (metaL0 > 0 && metaL1 < -0.5) || (metaL0 < 0 && metaL1 > 0.5);
+            // Self-reference paradox: L0 says one thing but market moved opposite since last check
+            const prevPrice = history.length >= 2 ? safeNumber(history[history.length-2].price, price) : price;
+            const microMove = ((price - prevPrice) / prevPrice) * 100;
+            const selfReferenceParadox = (change > 1 && microMove < -0.2) || (change < -1 && microMove > 0.2);
 
             // Information gap: insufficient data or placeholder data
             const informationGap = history.length < 20 || allPrices[currentAsset]?.isPlaceholder;
