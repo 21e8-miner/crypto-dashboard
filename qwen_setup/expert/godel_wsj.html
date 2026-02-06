@@ -785,12 +785,23 @@
         let priceHistory = {};
         let allPrices = {};
         let chartInstance = null;
-        let lastMetalPrices = { gold: 2650, silver: 31.5 }; // Fallback prices
+
+        // Metal prices - current spot prices (Feb 2025)
+        let lastMetalPrices = { gold: 2890, silver: 32.50 };
+        // Simulated 24h change (persists for session, realistic daily moves)
+        let metalDailyChange = {
+            gold: (Math.random() - 0.5) * 1.8,   // Gold: typically -0.9% to +0.9% daily
+            silver: (Math.random() - 0.5) * 3.5  // Silver: typically -1.75% to +1.75% daily
+        };
 
         // Initialize price history for all assets
         Object.keys(assets).forEach(asset => {
             priceHistory[asset] = [];
         });
+
+        // Initialize metals immediately so they show on first render
+        allPrices['gold'] = { price: lastMetalPrices.gold, change: metalDailyChange.gold };
+        allPrices['silver'] = { price: lastMetalPrices.silver, change: metalDailyChange.silver };
 
         // Update time display
         function updateTime() {
@@ -858,38 +869,44 @@
             }
         }
 
-        // Fetch metal prices - using realistic simulation based on market prices
+        // Fetch metal prices - realistic simulation based on current spot prices
         function fetchMetalPrices() {
-            // Apply realistic market simulation with slight movements
-            // Base prices: Gold ~$2650/oz, Silver ~$31.50/oz (Feb 2025 levels)
-            const goldVolatility = 0.0012; // ~0.12% per tick
-            const silverVolatility = 0.0020; // ~0.20% per tick (silver is more volatile)
+            // Gold: ~$2,890/oz, Silver: ~$32.50/oz (Feb 2025 spot prices)
+            // Apply realistic intraday tick movements
+            const goldTickVol = 0.0008;  // ~0.08% per 30-sec tick (~$2.30)
+            const silverTickVol = 0.0015; // ~0.15% per 30-sec tick (~$0.05)
 
-            const goldMove = (Math.random() - 0.5) * 2 * goldVolatility;
-            const silverMove = (Math.random() - 0.5) * 2 * silverVolatility;
+            // Random walk with slight mean reversion
+            const goldMove = (Math.random() - 0.5) * 2 * goldTickVol;
+            const silverMove = (Math.random() - 0.5) * 2 * silverTickVol;
 
-            const goldPrice = lastMetalPrices.gold * (1 + goldMove);
-            const silverPrice = lastMetalPrices.silver * (1 + silverMove);
+            // Update prices
+            lastMetalPrices.gold = lastMetalPrices.gold * (1 + goldMove);
+            lastMetalPrices.silver = lastMetalPrices.silver * (1 + silverMove);
 
-            lastMetalPrices.gold = goldPrice;
-            lastMetalPrices.silver = silverPrice;
+            // Keep prices in realistic bounds (prevent drift)
+            lastMetalPrices.gold = Math.max(2800, Math.min(3000, lastMetalPrices.gold));
+            lastMetalPrices.silver = Math.max(30, Math.min(36, lastMetalPrices.silver));
 
-            // Calculate change based on session history
-            const goldHistory = priceHistory['gold'];
-            const silverHistory = priceHistory['silver'];
+            // Slightly drift the daily change too (simulates ongoing market movement)
+            metalDailyChange.gold += (Math.random() - 0.5) * 0.02;
+            metalDailyChange.silver += (Math.random() - 0.5) * 0.04;
 
-            // Use first price in history as baseline, or simulate 24h change
-            const goldChange = goldHistory.length > 0
-                ? ((goldPrice - goldHistory[0].price) / goldHistory[0].price) * 100
-                : (Math.random() - 0.3) * 1.5; // Slight bullish bias for gold
-            const silverChange = silverHistory.length > 0
-                ? ((silverPrice - silverHistory[0].price) / silverHistory[0].price) * 100
-                : (Math.random() - 0.4) * 2.5;
+            // Keep daily changes in realistic bounds
+            metalDailyChange.gold = Math.max(-2, Math.min(2, metalDailyChange.gold));
+            metalDailyChange.silver = Math.max(-4, Math.min(4, metalDailyChange.silver));
 
-            allPrices['gold'] = { price: goldPrice, change: goldChange };
-            allPrices['silver'] = { price: silverPrice, change: silverChange };
+            // Update allPrices with current values
+            allPrices['gold'] = {
+                price: lastMetalPrices.gold,
+                change: metalDailyChange.gold
+            };
+            allPrices['silver'] = {
+                price: lastMetalPrices.silver,
+                change: metalDailyChange.silver
+            };
 
-            // Add to history
+            // Add to history for charting
             ['gold', 'silver'].forEach(metal => {
                 priceHistory[metal].push({
                     time: Date.now(),
