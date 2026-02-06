@@ -797,52 +797,90 @@
             priceHistory[asset] = [];
         });
 
-        // Metal API sources (rotate through these)
+        // Metal API sources (rotate through these) - multiple reliable sources
         const metalApis = [
             {
-                name: 'CoinGecko-PAXG',
+                name: 'CoinGecko-Tokens',
                 fetch: async () => {
-                    // PAXG = 1 oz gold, use it as gold proxy
-                    const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd&include_24hr_change=true');
+                    // Use both PAXG and XAUT (both = 1 oz gold)
+                    const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold,tether-gold&vs_currencies=usd&include_24hr_change=true');
+                    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                     const data = await resp.json();
-                    if (data['pax-gold']) {
+
+                    let goldPrice = null, goldChange = null;
+
+                    // Try PAXG first, then XAUT
+                    if (data['pax-gold']?.usd) {
+                        goldPrice = data['pax-gold'].usd;
+                        goldChange = data['pax-gold'].usd_24h_change || 0;
+                    } else if (data['tether-gold']?.usd) {
+                        goldPrice = data['tether-gold'].usd;
+                        goldChange = data['tether-gold'].usd_24h_change || 0;
+                    }
+
+                    if (goldPrice) {
                         return {
-                            gold: { price: data['pax-gold'].usd, change: data['pax-gold'].usd_24h_change || 0 },
-                            silver: null // PAXG doesn't have silver
+                            gold: { price: goldPrice, change: goldChange },
+                            silver: null
                         };
                     }
-                    throw new Error('No PAXG data');
+                    throw new Error('No tokenized gold data');
                 }
             },
             {
                 name: 'Metals.live',
                 fetch: async () => {
                     const resp = await fetch('https://api.metals.live/v1/spot');
+                    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                     const data = await resp.json();
-                    // Response is array: [{gold: price, silver: price, ...}]
+
                     if (Array.isArray(data) && data.length > 0) {
                         const spot = data[0];
                         return {
-                            gold: spot.gold ? { price: spot.gold, change: null } : null,
-                            silver: spot.silver ? { price: spot.silver, change: null } : null
+                            gold: spot.gold ? { price: parseFloat(spot.gold), change: null } : null,
+                            silver: spot.silver ? { price: parseFloat(spot.silver), change: null } : null
                         };
                     }
-                    throw new Error('No metals.live data');
+                    throw new Error('Invalid metals.live response');
                 }
             },
             {
-                name: 'GoldAPI-proxy',
+                name: 'Gold-API-Live',
                 fetch: async () => {
-                    // Try metals.dev free endpoint
-                    const resp = await fetch('https://api.metals.dev/v1/latest?api_key=demo&currency=USD&unit=oz');
+                    // Alternative metals endpoint
+                    const resp = await fetch('https://data-asg.goldprice.org/dbXRates/USD');
+                    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                     const data = await resp.json();
-                    if (data.metals) {
+
+                    if (data.items && data.items[0]) {
+                        const item = data.items[0];
                         return {
-                            gold: data.metals.gold ? { price: data.metals.gold, change: null } : null,
-                            silver: data.metals.silver ? { price: data.metals.silver, change: null } : null
+                            gold: item.xauPrice ? { price: item.xauPrice, change: item.chgXau || 0 } : null,
+                            silver: item.xagPrice ? { price: item.xagPrice, change: item.chgXag || 0 } : null
                         };
                     }
-                    throw new Error('No metals.dev data');
+                    throw new Error('No goldprice.org data');
+                }
+            },
+            {
+                name: 'FX-Rates-XAU',
+                fetch: async () => {
+                    // Use exchange rates API for XAU/XAG
+                    const resp = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=XAU,XAG');
+                    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                    const data = await resp.json();
+
+                    if (data.rates) {
+                        // XAU/XAG rates are inverted (USD per oz = 1/rate)
+                        const goldPrice = data.rates.XAU ? 1 / data.rates.XAU : null;
+                        const silverPrice = data.rates.XAG ? 1 / data.rates.XAG : null;
+
+                        return {
+                            gold: goldPrice ? { price: goldPrice, change: null } : null,
+                            silver: silverPrice ? { price: silverPrice, change: null } : null
+                        };
+                    }
+                    throw new Error('No FX rates data');
                 }
             }
         ];
@@ -929,39 +967,59 @@
             }
         }
 
+        // Validate metal prices are in reasonable range
+        function isValidGoldPrice(price) {
+            return price > 1500 && price < 5000; // Gold typically $1500-$5000/oz
+        }
+
+        function isValidSilverPrice(price) {
+            return price > 15 && price < 100; // Silver typically $15-$100/oz
+        }
+
         // Fetch metal prices from multiple rotating APIs
         async function fetchMetalPrices() {
-            const maxAttempts = metalApis.length;
             let goldData = null;
             let silverData = null;
+            let goldSource = null;
+            let silverSource = null;
 
-            // Try APIs in rotation until we get data
-            for (let attempt = 0; attempt < maxAttempts; attempt++) {
-                const apiIndex = (metalApiIndex + attempt) % metalApis.length;
+            // Try ALL APIs until we get both gold AND silver
+            for (let i = 0; i < metalApis.length; i++) {
+                const apiIndex = (metalApiIndex + i) % metalApis.length;
                 const api = metalApis[apiIndex];
 
                 try {
-                    addLogEntry(`Fetching metals from ${api.name}...`);
+                    addLogEntry(`Trying ${api.name}...`);
                     const result = await api.fetch();
 
-                    if (result.gold && result.gold.price > 0) {
+                    // Check gold
+                    if (!goldData && result.gold && isValidGoldPrice(result.gold.price)) {
                         goldData = result.gold;
-                        addLogEntry(`Gold: $${result.gold.price.toFixed(2)} (${api.name})`);
-                    }
-                    if (result.silver && result.silver.price > 0) {
-                        silverData = result.silver;
-                        addLogEntry(`Silver: $${result.silver.price.toFixed(2)} (${api.name})`);
+                        goldSource = api.name;
+                        addLogEntry(`✓ Gold: $${result.gold.price.toFixed(2)} (${api.name})`);
                     }
 
-                    // If we got at least gold, move to next API for next fetch (rotation)
-                    if (goldData) {
+                    // Check silver
+                    if (!silverData && result.silver && isValidSilverPrice(result.silver.price)) {
+                        silverData = result.silver;
+                        silverSource = api.name;
+                        addLogEntry(`✓ Silver: $${result.silver.price.toFixed(2)} (${api.name})`);
+                    }
+
+                    // If we have both, we're done
+                    if (goldData && silverData) {
                         metalApiIndex = (apiIndex + 1) % metalApis.length;
                         break;
                     }
                 } catch (err) {
+                    addLogEntry(`✗ ${api.name}: ${err.message}`);
                     console.log(`${api.name} failed:`, err.message);
                 }
             }
+
+            // Log final status
+            if (!goldData) addLogEntry('⚠ No valid gold price from any API');
+            if (!silverData) addLogEntry('⚠ No valid silver price from any API');
 
             // Update gold price
             if (goldData && goldData.price > 0) {
