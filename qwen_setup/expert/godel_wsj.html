@@ -784,7 +784,6 @@
         let currentAsset = 'bitcoin';
         let priceHistory = {};
         let allPrices = {};
-        let chartInstance = null;
 
         // Metal prices state
         let lastMetalPrices = { gold: null, silver: null };
@@ -980,8 +979,6 @@
         async function fetchMetalPrices() {
             let goldData = null;
             let silverData = null;
-            let goldSource = null;
-            let silverSource = null;
 
             // Try ALL APIs until we get both gold AND silver
             for (let i = 0; i < metalApis.length; i++) {
@@ -995,14 +992,12 @@
                     // Check gold
                     if (!goldData && result.gold && isValidGoldPrice(result.gold.price)) {
                         goldData = result.gold;
-                        goldSource = api.name;
                         addLogEntry(`✓ Gold: $${result.gold.price.toFixed(2)} (${api.name})`);
                     }
 
                     // Check silver
                     if (!silverData && result.silver && isValidSilverPrice(result.silver.price)) {
                         silverData = result.silver;
-                        silverSource = api.name;
                         addLogEntry(`✓ Silver: $${result.silver.price.toFixed(2)} (${api.name})`);
                     }
 
@@ -1133,6 +1128,8 @@
         // Update ticker bar
         function updateTicker() {
             const ticker = document.getElementById('ticker');
+            if (!ticker) return;
+
             let html = '';
 
             // Order: crypto first, then metals
@@ -1165,14 +1162,20 @@
         // Update main display
         function updateDisplay() {
             const info = assets[currentAsset];
+            if (!info) return;
+
             const data = allPrices[currentAsset] || { price: 0, change: 0 };
 
-            document.getElementById('asset-name').textContent = `${info.name} (${info.symbol})`;
-            document.getElementById('current-price').textContent = formatPrice(data.price, info.decimals);
-
+            const nameEl = document.getElementById('asset-name');
+            const priceEl = document.getElementById('current-price');
             const changeEl = document.getElementById('price-change');
-            changeEl.textContent = formatPercent(data.change);
-            changeEl.className = 'price-change ' + (data.change >= 0 ? 'positive' : 'negative');
+
+            if (nameEl) nameEl.textContent = `${info.name} (${info.symbol})`;
+            if (priceEl) priceEl.textContent = formatPrice(data.price, info.decimals);
+            if (changeEl) {
+                changeEl.textContent = formatPercent(data.change);
+                changeEl.className = 'price-change ' + (data.change >= 0 ? 'positive' : 'negative');
+            }
         }
 
         // Draw chart
@@ -1435,15 +1438,24 @@
                 rationale = `Market in equilibrium state. Change of ${change.toFixed(2)}% with volatility of ${volatility.toFixed(2)}% does not trigger action thresholds. Continuing recursive observation.`;
             }
 
-            document.getElementById('decision').textContent = decision;
-            document.getElementById('decision').className = 'decision-value ' + decision.toLowerCase();
-            document.getElementById('rationale').textContent = rationale;
+            const decisionEl = document.getElementById('decision');
+            const rationaleEl = document.getElementById('rationale');
+            if (decisionEl) {
+                decisionEl.textContent = decision;
+                decisionEl.className = 'decision-value ' + decision.toLowerCase();
+            }
+            if (rationaleEl) rationaleEl.textContent = rationale;
 
             // Update metrics
-            document.getElementById('godel-number').textContent = generateGodelNumber(history);
-            document.getElementById('self-ref-depth').textContent = Math.floor(3 + Math.random() * 2);
-            document.getElementById('coherence').textContent = (75 + Math.random() * 20).toFixed(1) + '%';
-            document.getElementById('cycles').textContent = Math.floor(100 + Math.random() * 50);
+            const godelEl = document.getElementById('godel-number');
+            const depthEl = document.getElementById('self-ref-depth');
+            const coherenceEl = document.getElementById('coherence');
+            const cyclesEl = document.getElementById('cycles');
+
+            if (godelEl) godelEl.textContent = generateGodelNumber(history);
+            if (depthEl) depthEl.textContent = Math.floor(3 + Math.random() * 2);
+            if (coherenceEl) coherenceEl.textContent = (75 + Math.random() * 20).toFixed(1) + '%';
+            if (cyclesEl) cyclesEl.textContent = Math.floor(100 + Math.random() * 50);
 
             // Log entry
             addLogEntry(`Analyzed ${assets[currentAsset].symbol}: ${decision} (${change.toFixed(2)}%)`);
@@ -1508,7 +1520,7 @@
             `).join('');
         }
 
-        // Add log entry with safety
+        // Add log entry with safety (XSS-safe)
         function addLogEntry(message) {
             const log = document.getElementById('improvement-log');
             if (!log) return;
@@ -1518,7 +1530,13 @@
 
             const entry = document.createElement('div');
             entry.className = 'log-entry';
-            entry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+
+            const timestampSpan = document.createElement('span');
+            timestampSpan.className = 'timestamp';
+            timestampSpan.textContent = `[${timestamp}]`;
+
+            entry.appendChild(timestampSpan);
+            entry.appendChild(document.createTextNode(' ' + message));
 
             log.appendChild(entry);
             log.scrollTop = log.scrollHeight;
