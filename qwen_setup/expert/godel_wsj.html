@@ -383,9 +383,15 @@
         /* Gödel Metrics */
         .godel-metrics {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 16px;
             margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .godel-metrics {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
         .metric-box {
@@ -690,12 +696,20 @@
                             <div class="metric-value" id="self-ref-depth">--</div>
                         </div>
                         <div class="metric-box">
+                            <div class="metric-label">Strange Loops</div>
+                            <div class="metric-value" id="strange-loops">0 🔄</div>
+                        </div>
+                        <div class="metric-box">
                             <div class="metric-label">Prediction Coherence</div>
                             <div class="metric-value" id="coherence">--%</div>
                         </div>
                         <div class="metric-box">
                             <div class="metric-label">Improvement Cycles</div>
                             <div class="metric-value" id="cycles">--</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="metric-label">Incompleteness Score</div>
+                            <div class="metric-value" id="incompleteness-score">0/7</div>
                         </div>
                     </div>
                 </div>
@@ -729,7 +743,17 @@
                     <div class="incompleteness-list" id="incompleteness-list">
                         <div class="incompleteness-item">
                             <span class="incompleteness-indicator inactive"></span>
-                            <span class="incompleteness-name">Regime Superposition</span>
+                            <span class="incompleteness-name">Indicator Contradiction</span>
+                            <span class="incompleteness-status">--</span>
+                        </div>
+                        <div class="incompleteness-item">
+                            <span class="incompleteness-indicator inactive"></span>
+                            <span class="incompleteness-name">Historical Novelty</span>
+                            <span class="incompleteness-status">--</span>
+                        </div>
+                        <div class="incompleteness-item">
+                            <span class="incompleteness-indicator inactive"></span>
+                            <span class="incompleteness-name">Self-Reference Paradox</span>
                             <span class="incompleteness-status">--</span>
                         </div>
                         <div class="incompleteness-item">
@@ -739,12 +763,17 @@
                         </div>
                         <div class="incompleteness-item">
                             <span class="incompleteness-indicator inactive"></span>
-                            <span class="incompleteness-name">Self-Referential Paradox</span>
+                            <span class="incompleteness-name">Regime Superposition</span>
                             <span class="incompleteness-status">--</span>
                         </div>
                         <div class="incompleteness-item">
                             <span class="incompleteness-indicator inactive"></span>
-                            <span class="incompleteness-name">Unprovable Statement</span>
+                            <span class="incompleteness-name">Observer Effect</span>
+                            <span class="incompleteness-status">--</span>
+                        </div>
+                        <div class="incompleteness-item">
+                            <span class="incompleteness-indicator inactive"></span>
+                            <span class="incompleteness-name">Complexity Limit</span>
                             <span class="incompleteness-status">--</span>
                         </div>
                     </div>
@@ -790,6 +819,10 @@
         let metalPreviousPrices = { gold: null, silver: null }; // For 24h change calc
         let metalApiIndex = 0; // Rotate through APIs
         let metalLastFetchTime = 0;
+
+        // Strange loop tracking - predictions that feed back into themselves
+        let strangeLoopCount = 0;
+        let previousPredictions = {}; // Track meta-prediction divergence
 
         // Initialize price history for all assets
         Object.keys(assets).forEach(asset => {
@@ -1410,12 +1443,46 @@
             ];
             updateMetaLevels(metaLevels);
 
-            // Incompleteness detection
+            // Incompleteness detection - all 7 types from GODEL_README.md
+            // Calculate additional metrics for detection
+            const rsi = 50 + change * 2; // Simulated RSI
+            const macd = change > 0 ? Math.abs(change) * 0.1 : -Math.abs(change) * 0.1;
+            const momentum = change;
+
+            // Check for indicator contradiction (RSI vs MACD disagreement)
+            const indicatorContradiction = (rsi > 70 && macd < 0) || (rsi < 30 && macd > 0);
+
+            // Check for historical novelty (price at extreme deviation from mean)
+            const priceValues = history.map(h => safeNumber(h.price, 0)).filter(p => p > 0);
+            const meanPrice = priceValues.length > 0 ? priceValues.reduce((a, b) => a + b, 0) / priceValues.length : price;
+            const priceDeviation = Math.abs(price - meanPrice) / meanPrice * 100;
+            const historicalNovelty = priceDeviation > 5 || history.length < 5;
+
+            // Self-reference paradox: prediction changes outcome (meta-prediction divergence)
+            const metaL0 = change > 0 ? 1 : -1;
+            const metaL1 = change * 0.15;
+            const selfReferenceParadox = (metaL0 > 0 && metaL1 < -0.5) || (metaL0 < 0 && metaL1 > 0.5);
+
+            // Information gap: insufficient data or placeholder data
+            const informationGap = history.length < 20 || allPrices[currentAsset]?.isPlaceholder;
+
+            // Regime superposition: neither clearly bullish nor bearish
+            const regimeSuperposition = Math.abs(change) < 0.5 && volatility > 1;
+
+            // Observer effect: large trades in thin markets (simulated via high volatility + low volume proxy)
+            const observerEffect = volatility > 3 && history.length < 30;
+
+            // Complexity limit: exceeds modeling capacity (high volatility + novelty)
+            const complexityLimit = volatility > 5 || (volatility > 3 && historicalNovelty);
+
             const incompleteness = [
-                { name: 'Regime Superposition', active: Math.abs(change) < 0.5 && volatility > 1 },
-                { name: 'Information Gap', active: history.length < 20 },
-                { name: 'Self-Referential Paradox', active: Math.random() < 0.1 },
-                { name: 'Unprovable Statement', active: volatility > 5 }
+                { name: 'Indicator Contradiction', active: indicatorContradiction },
+                { name: 'Historical Novelty', active: historicalNovelty },
+                { name: 'Self-Reference Paradox', active: selfReferenceParadox },
+                { name: 'Information Gap', active: informationGap },
+                { name: 'Regime Superposition', active: regimeSuperposition },
+                { name: 'Observer Effect', active: observerEffect },
+                { name: 'Complexity Limit', active: complexityLimit }
             ];
             updateIncompleteness(incompleteness);
 
@@ -1446,16 +1513,36 @@
             }
             if (rationaleEl) rationaleEl.textContent = rationale;
 
+            // Strange loop detection: compare current prediction to previous
+            const currentPrediction = change > 0 ? 'BULLISH' : 'BEARISH';
+            const prevPred = previousPredictions[currentAsset];
+            if (prevPred && prevPred !== currentPrediction) {
+                // Prediction flipped - potential strange loop (self-fulfilling prophecy reversal)
+                strangeLoopCount++;
+                addLogEntry(`Strange loop detected: ${prevPred} → ${currentPrediction}`);
+            }
+            previousPredictions[currentAsset] = currentPrediction;
+
+            // Count active incompleteness types
+            const activeIncompleteness = incompleteness.filter(i => i.active).length;
+
             // Update metrics
             const godelEl = document.getElementById('godel-number');
             const depthEl = document.getElementById('self-ref-depth');
             const coherenceEl = document.getElementById('coherence');
             const cyclesEl = document.getElementById('cycles');
+            const loopsEl = document.getElementById('strange-loops');
+            const incompleteScoreEl = document.getElementById('incompleteness-score');
 
             if (godelEl) godelEl.textContent = generateGodelNumber(history);
             if (depthEl) depthEl.textContent = Math.floor(3 + Math.random() * 2);
             if (coherenceEl) coherenceEl.textContent = (75 + Math.random() * 20).toFixed(1) + '%';
             if (cyclesEl) cyclesEl.textContent = Math.floor(100 + Math.random() * 50);
+            if (loopsEl) loopsEl.textContent = `${strangeLoopCount} 🔄`;
+            if (incompleteScoreEl) {
+                incompleteScoreEl.textContent = `${activeIncompleteness}/7`;
+                incompleteScoreEl.style.color = activeIncompleteness > 3 ? '#C72C41' : (activeIncompleteness > 0 ? '#C4A747' : '#14853D');
+            }
 
             // Log entry
             addLogEntry(`Analyzed ${assets[currentAsset].symbol}: ${decision} (${change.toFixed(2)}%)`);
