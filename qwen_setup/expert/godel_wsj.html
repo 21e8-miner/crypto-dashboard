@@ -1059,10 +1059,10 @@
 
                 // Calculate 24h change if we have previous price
                 let goldChange = goldData.change;
-                if (goldChange == null && metalPreviousPrices.gold) {
+                if (goldChange == null && metalPreviousPrices.gold && metalPreviousPrices.gold > 0) {
                     goldChange = ((goldData.price - metalPreviousPrices.gold) / metalPreviousPrices.gold) * 100;
                 }
-                if (goldChange == null) goldChange = 0;
+                if (goldChange == null || !isFinite(goldChange)) goldChange = 0;
 
                 lastMetalPrices.gold = goldData.price;
                 if (!metalPreviousPrices.gold) metalPreviousPrices.gold = goldData.price;
@@ -1082,10 +1082,10 @@
                 }
 
                 let silverChange = silverData.change;
-                if (silverChange == null && metalPreviousPrices.silver) {
+                if (silverChange == null && metalPreviousPrices.silver && metalPreviousPrices.silver > 0) {
                     silverChange = ((silverData.price - metalPreviousPrices.silver) / metalPreviousPrices.silver) * 100;
                 }
-                if (silverChange == null) silverChange = 0;
+                if (silverChange == null || !isFinite(silverChange)) silverChange = 0;
 
                 lastMetalPrices.silver = silverData.price;
                 if (!metalPreviousPrices.silver) metalPreviousPrices.silver = silverData.price;
@@ -1449,8 +1449,9 @@
             const rsi = 50 + change * 2; // Simulated RSI based on momentum
 
             // MACD uses lagged data - simulate with historical average
-            const recentChange = history.length >= 3
-                ? ((safeNumber(history[history.length-1].price, 1) - safeNumber(history[history.length-3].price, 1)) / safeNumber(history[history.length-3].price, 1)) * 100
+            const price3ago = history.length >= 3 ? safeNumber(history[history.length-3].price, 1) : 1;
+            const recentChange = history.length >= 3 && price3ago > 0
+                ? ((safeNumber(history[history.length-1].price, 1) - price3ago) / price3ago) * 100
                 : change;
             const macdSignal = change - recentChange; // Divergence between current and recent
 
@@ -1460,12 +1461,12 @@
             // Check for historical novelty (price at extreme deviation from mean)
             const priceValues = history.map(h => safeNumber(h.price, 0)).filter(p => p > 0);
             const meanPrice = priceValues.length > 0 ? priceValues.reduce((a, b) => a + b, 0) / priceValues.length : price;
-            const priceDeviation = Math.abs(price - meanPrice) / meanPrice * 100;
+            const priceDeviation = meanPrice > 0 ? Math.abs(price - meanPrice) / meanPrice * 100 : 0;
             const historicalNovelty = priceDeviation > 5 || history.length < 5;
 
             // Self-reference paradox: L0 says one thing but market moved opposite since last check
             const prevPrice = history.length >= 2 ? safeNumber(history[history.length-2].price, price) : price;
-            const microMove = ((price - prevPrice) / prevPrice) * 100;
+            const microMove = prevPrice > 0 ? ((price - prevPrice) / prevPrice) * 100 : 0;
             const selfReferenceParadox = (change > 1 && microMove < -0.2) || (change < -1 && microMove > 0.2);
 
             // Information gap: insufficient data or placeholder data
