@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gödel Machine | Market Analysis</title>
     <style>
-        /* WSJ Typography */
         @import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500&display=swap');
 
         :root {
-            /* WSJ Color Palette */
             --wsj-cream: #FFF9F0;
             --wsj-white: #FFFFFF;
             --wsj-black: #111111;
@@ -23,840 +21,375 @@
             --wsj-red: #C72C41;
             --wsj-green: #14853D;
             --wsj-gold: #C4A747;
-
-            /* Typography */
-            --font-headline: 'Playfair Display', Georgia, 'Times New Roman', serif;
-            --font-body: 'Libre Franklin', -apple-system, BlinkMacSystemFont, sans-serif;
-            --font-mono: 'Source Code Pro', 'Courier New', monospace;
+            --font-headline: 'Playfair Display', Georgia, serif;
+            --font-body: 'Libre Franklin', -apple-system, sans-serif;
+            --font-mono: 'Source Code Pro', monospace;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: var(--font-body);
             background: var(--wsj-cream);
             color: var(--wsj-black);
             line-height: 1.5;
-            font-size: 15px;
+            font-size: 14px;
         }
 
         /* Header */
         .header {
             background: var(--wsj-white);
             border-bottom: 3px solid var(--wsj-black);
-            padding: 16px 24px;
-        }
-
-        .header-top {
+            padding: 12px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            max-width: 1400px;
-            margin: 0 auto;
         }
+        .logo { font-family: var(--font-headline); font-size: 26px; font-weight: 700; }
+        .logo span { color: var(--wsj-blue); }
+        .header-right { display: flex; align-items: center; gap: 20px; font-size: 13px; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--wsj-green); animation: pulse 2s infinite; margin-right: 6px; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-        .logo {
-            font-family: var(--font-headline);
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-
-        .logo span {
-            color: var(--wsj-blue);
-        }
-
-        .timestamp {
-            font-size: 13px;
-            color: var(--wsj-gray-mid);
-        }
-
-        /* Market Ticker */
-        .ticker-bar {
+        /* Portfolio Score Banner */
+        .portfolio-banner {
             background: var(--wsj-black);
             color: var(--wsj-white);
             padding: 10px 24px;
-            overflow: hidden;
-        }
-
-        .ticker-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            gap: 32px;
-            animation: tickerScroll 30s linear infinite;
-        }
-
-        @keyframes tickerScroll {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
-
-        .ticker-item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            white-space: nowrap;
+            gap: 32px;
+            overflow-x: auto;
             font-size: 13px;
-            font-weight: 500;
         }
-
-        .ticker-symbol {
-            color: var(--wsj-blue);
-            font-weight: 600;
-        }
-
-        .ticker-symbol.metal {
-            color: #FFD700;
-        }
-
-        .ticker-price {
-            font-family: var(--font-mono);
-        }
-
-        .ticker-change {
-            font-family: var(--font-mono);
-            padding: 2px 6px;
-            border-radius: 2px;
-        }
-
-        .ticker-change.positive {
-            background: var(--wsj-green);
-        }
-
-        .ticker-change.negative {
-            background: var(--wsj-red);
-        }
+        .pb-item { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+        .pb-label { color: var(--wsj-gray-light); text-transform: uppercase; font-size: 10px; letter-spacing: 1px; }
+        .pb-value { font-family: var(--font-mono); font-weight: 600; }
+        .pb-value.green { color: #4ADE80; }
+        .pb-value.red { color: #F87171; }
+        .pb-value.gold { color: var(--wsj-gold); }
 
         /* Main Container */
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 24px;
-        }
+        .container { max-width: 1440px; margin: 0 auto; padding: 20px; }
 
-        /* Section Headers */
-        .section-header {
+        /* Section */
+        .section-title {
             font-family: var(--font-headline);
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 600;
-            margin-bottom: 16px;
-            padding-bottom: 8px;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
             border-bottom: 2px solid var(--wsj-black);
         }
-
-        .section-subheader {
-            font-size: 13px;
+        .section-sub {
+            font-size: 11px;
             color: var(--wsj-gray-mid);
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
-        /* Asset Selector */
-        .asset-selector {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-
-        .asset-btn {
-            font-family: var(--font-body);
-            font-size: 13px;
-            font-weight: 600;
-            padding: 8px 16px;
-            border: 1px solid var(--wsj-gray-border);
-            background: var(--wsj-white);
-            cursor: pointer;
-            transition: all 0.15s ease;
-        }
-
-        .asset-btn:hover {
-            border-color: var(--wsj-blue);
-            color: var(--wsj-blue);
-        }
-
-        .asset-btn.active {
-            background: var(--wsj-black);
-            color: var(--wsj-white);
-            border-color: var(--wsj-black);
-        }
-
-        .asset-btn[data-asset="gold"],
-        .asset-btn[data-asset="silver"] {
-            border-color: var(--wsj-gold);
-            color: var(--wsj-gold);
-        }
-
-        .asset-btn[data-asset="gold"]:hover,
-        .asset-btn[data-asset="silver"]:hover {
-            background: var(--wsj-gold);
-            color: var(--wsj-white);
-        }
-
-        .asset-btn[data-asset="gold"].active,
-        .asset-btn[data-asset="silver"].active {
-            background: var(--wsj-gold);
-            color: var(--wsj-white);
-            border-color: var(--wsj-gold);
-        }
-
-        /* Grid Layout */
-        .main-grid {
+        /* Asset Grid - All assets visible */
+        .asset-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 24px;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
         }
-
-        @media (max-width: 1024px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
+        .asset-card {
+            background: var(--wsj-white);
+            border: 1px solid var(--wsj-gray-border);
+            padding: 14px;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
         }
+        .asset-card:hover { border-color: var(--wsj-blue); }
+        .asset-card.selected { border-color: var(--wsj-black); border-width: 2px; padding: 13px; }
+        .asset-card.metal { border-left: 3px solid var(--wsj-gold); }
+        .asset-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .asset-symbol { font-family: var(--font-mono); font-weight: 700; font-size: 16px; }
+        .asset-symbol.metal-sym { color: var(--wsj-gold); }
+        .asset-decision {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .asset-decision.buy { background: var(--wsj-green); color: white; }
+        .asset-decision.sell { background: var(--wsj-red); color: white; }
+        .asset-decision.hold { background: var(--wsj-gray-light); color: white; }
+        .asset-decision.abstain { background: var(--wsj-gold); color: white; }
+        .asset-price { font-family: var(--font-mono); font-size: 20px; font-weight: 600; }
+        .asset-change { font-family: var(--font-mono); font-size: 13px; font-weight: 600; margin-left: 8px; }
+        .asset-change.pos { color: var(--wsj-green); }
+        .asset-change.neg { color: var(--wsj-red); }
+        .asset-sparkline { height: 40px; margin-top: 8px; }
+        .asset-meta { display: flex; gap: 12px; margin-top: 6px; font-size: 11px; color: var(--wsj-gray-mid); }
+        .asset-meta span { font-family: var(--font-mono); }
 
-        /* Card Styles */
+        /* Detail Panel */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        @media (max-width: 1024px) { .detail-grid { grid-template-columns: 1fr; } }
+
         .card {
             background: var(--wsj-white);
             border: 1px solid var(--wsj-gray-border);
-            padding: 20px;
+            padding: 16px;
         }
-
-        /* Chart Container */
-        .chart-container {
-            position: relative;
-            height: 400px;
-            margin-bottom: 16px;
-        }
-
-        .chart-canvas {
-            width: 100%;
-            height: 100%;
-        }
-
-        /* Price Display */
-        .price-display {
-            display: flex;
-            align-items: baseline;
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-
-        .current-price {
+        .card-title {
             font-family: var(--font-headline);
-            font-size: 42px;
-            font-weight: 700;
-            letter-spacing: -1px;
-        }
-
-        .price-change {
-            font-family: var(--font-mono);
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--wsj-gray-border);
         }
 
-        .price-change.positive {
-            color: var(--wsj-green);
-        }
+        /* Radar Chart */
+        .radar-container { width: 100%; height: 240px; display: flex; justify-content: center; }
 
-        .price-change.negative {
-            color: var(--wsj-red);
-        }
-
-        /* Expected Returns Table */
-        .returns-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-
-        .returns-table th {
+        /* Heat Map */
+        .heatmap-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .heatmap-table th {
             text-align: left;
             font-weight: 600;
-            padding: 12px 8px;
+            padding: 6px 4px;
             border-bottom: 2px solid var(--wsj-black);
-            font-size: 12px;
+            font-size: 10px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--wsj-gray-mid);
         }
-
-        .returns-table td {
-            padding: 12px 8px;
-            border-bottom: 1px solid var(--wsj-gray-border);
-        }
-
-        .returns-table tr:hover {
-            background: var(--wsj-gray-bg);
-        }
-
-        .returns-table .positive {
-            color: var(--wsj-green);
-            font-weight: 600;
-        }
-
-        .returns-table .negative {
-            color: var(--wsj-red);
-            font-weight: 600;
-        }
-
-        .returns-table .timeframe {
-            font-weight: 500;
-            color: var(--wsj-gray-dark);
-        }
-
-        .returns-table .value {
-            font-family: var(--font-mono);
-            text-align: right;
-        }
-
-        .returns-table .confidence {
-            text-align: right;
-        }
-
-        .confidence-bar {
+        .heatmap-table td { padding: 5px 4px; text-align: center; border-bottom: 1px solid var(--wsj-gray-border); }
+        .heatmap-cell {
             display: inline-block;
-            width: 60px;
-            height: 6px;
-            background: var(--wsj-gray-border);
+            width: 18px;
+            height: 18px;
             border-radius: 3px;
-            overflow: hidden;
-            margin-right: 8px;
-            vertical-align: middle;
+            line-height: 18px;
+            font-size: 9px;
+            font-weight: 700;
+            color: white;
         }
+        .heatmap-cell.active { background: var(--wsj-red); }
+        .heatmap-cell.inactive { background: #E5E7EB; color: #9CA3AF; }
+        .heatmap-asset { font-family: var(--font-mono); font-weight: 600; text-align: left !important; }
 
-        .confidence-fill {
-            height: 100%;
-            background: var(--wsj-blue);
-            border-radius: 3px;
-        }
+        /* Returns Table */
+        .returns-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .returns-table th { text-align: left; font-weight: 600; padding: 8px 6px; border-bottom: 2px solid var(--wsj-black); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--wsj-gray-mid); }
+        .returns-table td { padding: 8px 6px; border-bottom: 1px solid var(--wsj-gray-border); font-family: var(--font-mono); font-size: 12px; }
+        .returns-table .pos { color: var(--wsj-green); font-weight: 600; }
+        .returns-table .neg { color: var(--wsj-red); font-weight: 600; }
+
+        /* Strange Loop Visualizer */
+        .loop-viz { display: flex; align-items: center; justify-content: center; height: 180px; position: relative; }
+        .loop-svg { width: 160px; height: 160px; }
+        .loop-stats { margin-left: 16px; font-size: 12px; }
+        .loop-stat { margin-bottom: 8px; }
+        .loop-stat-label { color: var(--wsj-gray-mid); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .loop-stat-value { font-family: var(--font-mono); font-size: 18px; font-weight: 700; }
 
         /* Decision Box */
         .decision-box {
             background: var(--wsj-gray-bg);
             border-left: 4px solid var(--wsj-black);
-            padding: 16px 20px;
-            margin-top: 20px;
+            padding: 12px 16px;
+            margin-top: 12px;
         }
+        .decision-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--wsj-gray-mid); }
+        .decision-value { font-family: var(--font-headline); font-size: 24px; font-weight: 700; }
+        .decision-value.buy { color: var(--wsj-green); }
+        .decision-value.sell { color: var(--wsj-red); }
+        .decision-value.hold { color: var(--wsj-gray-mid); }
+        .decision-value.abstain { color: var(--wsj-gold); }
+        .decision-rationale { font-size: 12px; color: var(--wsj-gray-mid); margin-top: 4px; line-height: 1.5; }
 
-        .decision-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--wsj-gray-mid);
-            margin-bottom: 4px;
-        }
-
-        .decision-value {
-            font-family: var(--font-headline);
-            font-size: 28px;
-            font-weight: 700;
-        }
-
-        .decision-value.buy {
-            color: var(--wsj-green);
-        }
-
-        .decision-value.sell {
-            color: var(--wsj-red);
-        }
-
-        .decision-value.hold {
-            color: var(--wsj-gray-mid);
-        }
-
-        .decision-value.abstain {
-            color: var(--wsj-gold);
-        }
-
-        .decision-rationale {
-            font-size: 14px;
-            color: var(--wsj-gray-mid);
-            margin-top: 8px;
-            line-height: 1.6;
-        }
-
-        /* Gödel Metrics */
-        .godel-metrics {
+        /* Gödel Metrics Row */
+        .godel-row {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-            margin-top: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .godel-metrics {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        .metric-box {
-            background: var(--wsj-gray-bg);
-            padding: 16px;
-        }
-
-        .metric-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--wsj-gray-mid);
-            margin-bottom: 4px;
-        }
-
-        .metric-value {
-            font-family: var(--font-mono);
-            font-size: 20px;
-            font-weight: 600;
-        }
-
-        /* Sidebar */
-        .sidebar-card {
-            margin-bottom: 24px;
-        }
-
-        .sidebar-card:last-child {
-            margin-bottom: 0;
-        }
-
-        /* Meta Prediction Levels */
-        .meta-levels {
-            margin-top: 16px;
-        }
-
-        .meta-level {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--wsj-gray-border);
-        }
-
-        .meta-level:last-child {
-            border-bottom: none;
-        }
-
-        .level-name {
-            font-weight: 500;
-        }
-
-        .level-value {
-            font-family: var(--font-mono);
-            font-size: 14px;
-        }
-
-        /* Incompleteness Indicators */
-        .incompleteness-list {
-            margin-top: 16px;
-        }
-
-        .incompleteness-item {
-            display: flex;
-            align-items: center;
+            grid-template-columns: repeat(6, 1fr);
             gap: 12px;
-            padding: 10px 0;
-            border-bottom: 1px solid var(--wsj-gray-border);
+            margin-top: 12px;
         }
+        @media (max-width: 768px) { .godel-row { grid-template-columns: repeat(3, 1fr); } }
+        .godel-metric { background: var(--wsj-gray-bg); padding: 10px; text-align: center; }
+        .godel-metric-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--wsj-gray-mid); margin-bottom: 2px; }
+        .godel-metric-value { font-family: var(--font-mono); font-size: 16px; font-weight: 700; }
 
-        .incompleteness-item:last-child {
-            border-bottom: none;
-        }
-
-        .incompleteness-indicator {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-
-        .incompleteness-indicator.active {
-            background: var(--wsj-red);
-        }
-
-        .incompleteness-indicator.inactive {
-            background: var(--wsj-gray-light);
-        }
-
-        .incompleteness-name {
-            font-size: 13px;
-            flex: 1;
-        }
-
-        .incompleteness-status {
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        /* Self-Improvement Log */
-        .improvement-log {
+        /* Log */
+        .log-panel {
             font-family: var(--font-mono);
-            font-size: 12px;
+            font-size: 11px;
             background: var(--wsj-black);
-            color: #00FF00;
-            padding: 16px;
-            max-height: 200px;
+            color: #4ADE80;
+            padding: 12px;
+            max-height: 150px;
             overflow-y: auto;
-            line-height: 1.8;
+            line-height: 1.7;
+            margin-top: 16px;
         }
-
-        .log-entry {
-            opacity: 0.9;
-        }
-
-        .log-entry .timestamp {
-            color: var(--wsj-gray-light);
-        }
+        .log-entry .ts { color: var(--wsj-gray-light); }
 
         /* Footer */
-        .footer {
-            text-align: center;
-            padding: 24px;
-            font-size: 12px;
-            color: var(--wsj-gray-mid);
-            border-top: 1px solid var(--wsj-gray-border);
-            margin-top: 32px;
-        }
+        .footer { text-align: center; padding: 16px; font-size: 11px; color: var(--wsj-gray-mid); border-top: 1px solid var(--wsj-gray-border); margin-top: 24px; }
 
-        /* Loading State */
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 200px;
-            color: var(--wsj-gray-mid);
-        }
-
-        .loading-spinner {
-            width: 24px;
-            height: 24px;
-            border: 2px solid var(--wsj-gray-border);
-            border-top-color: var(--wsj-blue);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 12px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Status indicator */
-        .status-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-
-        .status-dot.live {
-            background: var(--wsj-green);
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        /* Momentum Banner */
-        .momentum-banner {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: var(--wsj-white);
-            padding: 12px 24px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 16px;
-            font-size: 14px;
-        }
-
-        .momentum-label {
-            color: var(--wsj-gray-light);
-            text-transform: uppercase;
-            font-size: 11px;
-            letter-spacing: 1px;
-        }
-
-        .momentum-asset {
-            font-weight: 700;
-            font-size: 18px;
-            color: var(--wsj-gold);
-        }
-
-        .momentum-value {
-            font-family: var(--font-mono);
-            font-weight: 600;
-            padding: 4px 12px;
-            border-radius: 4px;
-        }
-
-        .momentum-value.positive {
-            background: var(--wsj-green);
-        }
-
-        .momentum-value.negative {
-            background: var(--wsj-red);
-        }
-
-        .momentum-timeframe {
-            color: var(--wsj-gray-light);
-            font-size: 12px;
-        }
+        /* Confidence bar inline */
+        .conf-bar { display: inline-block; width: 40px; height: 5px; background: var(--wsj-gray-border); border-radius: 3px; overflow: hidden; vertical-align: middle; margin-right: 4px; }
+        .conf-fill { height: 100%; background: var(--wsj-blue); border-radius: 3px; }
     </style>
 </head>
 <body>
     <header class="header">
-        <div class="header-top">
-            <div class="logo">Gödel<span>Machine</span></div>
-            <div class="timestamp">
-                <span class="status-dot live"></span>
-                <span id="current-time">Loading...</span>
-            </div>
+        <div class="logo">Gödel<span>Machine</span></div>
+        <div class="header-right">
+            <span><span class="status-dot"></span><span id="current-time">--</span></span>
         </div>
     </header>
 
-    <div class="ticker-bar">
-        <div class="ticker-container" id="ticker">
-            <!-- Populated by JS -->
+    <div class="portfolio-banner" id="portfolio-banner">
+        <div class="pb-item">
+            <div><div class="pb-label">Portfolio Gödel Score</div><div class="pb-value gold" id="pb-score">--</div></div>
         </div>
-    </div>
-
-    <div class="momentum-banner">
-        <span class="momentum-label">Highest 5-Min Momentum</span>
-        <span class="momentum-asset" id="momentum-asset">--</span>
-        <span class="momentum-value positive" id="momentum-value">+0.00%</span>
-        <span class="momentum-timeframe">Last 5 minutes</span>
+        <div class="pb-item">
+            <div><div class="pb-label">Active Incompleteness</div><div class="pb-value red" id="pb-incomplete">--</div></div>
+        </div>
+        <div class="pb-item">
+            <div><div class="pb-label">Strange Loops</div><div class="pb-value" id="pb-loops">0</div></div>
+        </div>
+        <div class="pb-item">
+            <div><div class="pb-label">5-Min Momentum</div><div class="pb-value green" id="pb-momentum">--</div></div>
+        </div>
+        <div class="pb-item">
+            <div><div class="pb-label">Signals</div><div class="pb-value" id="pb-signals">-- / -- / --</div></div>
+        </div>
     </div>
 
     <main class="container">
-        <div class="section-subheader">Crypto Assets</div>
-        <div class="asset-selector" id="crypto-selector">
-            <button class="asset-btn active" data-asset="bitcoin">BTC</button>
-            <button class="asset-btn" data-asset="ethereum">ETH</button>
-            <button class="asset-btn" data-asset="solana">SOL</button>
-            <button class="asset-btn" data-asset="hyperliquid">HYPE</button>
-            <button class="asset-btn" data-asset="cardano">ADA</button>
-            <button class="asset-btn" data-asset="dogecoin">DOGE</button>
-            <button class="asset-btn" data-asset="chainlink">LINK</button>
-        </div>
-        <div class="section-subheader" style="margin-top: 16px;">Precious Metals (Futures)</div>
-        <div class="asset-selector" id="metals-selector">
-            <button class="asset-btn" data-asset="gold">GOLD</button>
-            <button class="asset-btn" data-asset="silver">SILVER</button>
-        </div>
+        <div class="section-title">All Assets</div>
+        <div class="asset-grid" id="asset-grid"></div>
 
-        <div class="main-grid">
-            <div class="main-content">
+        <div class="detail-grid">
+            <!-- Column 1: Radar + Decision -->
+            <div>
                 <div class="card">
-                    <h2 class="section-header" id="asset-name">Bitcoin (BTC)</h2>
-
-                    <div class="price-display">
-                        <span class="current-price" id="current-price">$--,---</span>
-                        <span class="price-change positive" id="price-change">+0.00%</span>
-                    </div>
-
-                    <div class="chart-container">
-                        <canvas id="price-chart" class="chart-canvas"></canvas>
-                    </div>
-
-                    <div class="section-subheader">Forward Expected Returns</div>
-                    <table class="returns-table">
-                        <thead>
-                            <tr>
-                                <th>Timeframe</th>
-                                <th style="text-align: right">Expected Return</th>
-                                <th style="text-align: right">Price Target</th>
-                                <th style="text-align: right">Confidence</th>
-                            </tr>
-                        </thead>
-                        <tbody id="returns-body">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
-
+                    <div class="card-title">Incompleteness Radar</div>
+                    <div class="radar-container"><canvas id="radar-chart" width="240" height="240"></canvas></div>
                     <div class="decision-box">
                         <div class="decision-label">Gödel Machine Recommendation</div>
                         <div class="decision-value hold" id="decision">ANALYZING...</div>
-                        <div class="decision-rationale" id="rationale">
-                            Initializing self-referential analysis framework...
-                        </div>
-                    </div>
-
-                    <div class="godel-metrics">
-                        <div class="metric-box">
-                            <div class="metric-label">Gödel Number</div>
-                            <div class="metric-value" id="godel-number">--</div>
-                        </div>
-                        <div class="metric-box">
-                            <div class="metric-label">Self-Reference Depth</div>
-                            <div class="metric-value" id="self-ref-depth">--</div>
-                        </div>
-                        <div class="metric-box">
-                            <div class="metric-label">Strange Loops</div>
-                            <div class="metric-value" id="strange-loops">0 🔄</div>
-                        </div>
-                        <div class="metric-box">
-                            <div class="metric-label">Prediction Coherence</div>
-                            <div class="metric-value" id="coherence">--%</div>
-                        </div>
-                        <div class="metric-box">
-                            <div class="metric-label">Improvement Cycles</div>
-                            <div class="metric-value" id="cycles">--</div>
-                        </div>
-                        <div class="metric-box">
-                            <div class="metric-label">Incompleteness Score</div>
-                            <div class="metric-value" id="incompleteness-score">0/7</div>
-                        </div>
+                        <div class="decision-rationale" id="rationale">Initializing...</div>
                     </div>
                 </div>
             </div>
 
-            <div class="sidebar">
-                <div class="card sidebar-card">
-                    <h3 class="section-header">Meta-Prediction Tower</h3>
-                    <div class="meta-levels" id="meta-levels">
-                        <div class="meta-level">
-                            <span class="level-name">L0 - Base Prediction</span>
-                            <span class="level-value">--</span>
-                        </div>
-                        <div class="meta-level">
-                            <span class="level-name">L1 - Error Correction</span>
-                            <span class="level-value">--</span>
-                        </div>
-                        <div class="meta-level">
-                            <span class="level-name">L2 - Trend Analysis</span>
-                            <span class="level-value">--</span>
-                        </div>
-                        <div class="meta-level">
-                            <span class="level-name">L3 - Volatility Model</span>
-                            <span class="level-value">--</span>
-                        </div>
-                    </div>
+            <!-- Column 2: Heat Map -->
+            <div>
+                <div class="card">
+                    <div class="card-title">Cross-Asset Incompleteness</div>
+                    <table class="heatmap-table" id="heatmap-table">
+                        <thead><tr><th>Asset</th><th>IC</th><th>HN</th><th>SR</th><th>IG</th><th>RS</th><th>OE</th><th>CL</th></tr></thead>
+                        <tbody id="heatmap-body"></tbody>
+                    </table>
                 </div>
+            </div>
 
-                <div class="card sidebar-card">
-                    <h3 class="section-header">Incompleteness Detection</h3>
-                    <div class="incompleteness-list" id="incompleteness-list">
-                        <div class="incompleteness-item">
-                            <span class="incompleteness-indicator inactive"></span>
-                            <span class="incompleteness-name">Indicator Contradiction</span>
-                            <span class="incompleteness-status">--</span>
-                        </div>
-                        <div class="incompleteness-item">
-                            <span class="incompleteness-indicator inactive"></span>
-                            <span class="incompleteness-name">Historical Novelty</span>
-                            <span class="incompleteness-status">--</span>
-                        </div>
-                        <div class="incompleteness-item">
-                            <span class="incompleteness-indicator inactive"></span>
-                            <span class="incompleteness-name">Self-Reference Paradox</span>
-                            <span class="incompleteness-status">--</span>
-                        </div>
-                        <div class="incompleteness-item">
-                            <span class="incompleteness-indicator inactive"></span>
-                            <span class="incompleteness-name">Information Gap</span>
-                            <span class="incompleteness-status">--</span>
-                        </div>
-                        <div class="incompleteness-item">
-                            <span class="incompleteness-indicator inactive"></span>
-                            <span class="incompleteness-name">Regime Superposition</span>
-                            <span class="incompleteness-status">--</span>
-                        </div>
-                        <div class="incompleteness-item">
-                            <span class="incompleteness-indicator inactive"></span>
-                            <span class="incompleteness-name">Observer Effect</span>
-                            <span class="incompleteness-status">--</span>
-                        </div>
-                        <div class="incompleteness-item">
-                            <span class="incompleteness-indicator inactive"></span>
-                            <span class="incompleteness-name">Complexity Limit</span>
-                            <span class="incompleteness-status">--</span>
-                        </div>
-                    </div>
+            <!-- Column 3: Returns + Loop -->
+            <div>
+                <div class="card">
+                    <div class="card-title">Forward Expected Returns</div>
+                    <table class="returns-table">
+                        <thead><tr><th>Period</th><th style="text-align:right">Return</th><th style="text-align:right">Target</th><th style="text-align:right">Conf</th></tr></thead>
+                        <tbody id="returns-body"></tbody>
+                    </table>
                 </div>
-
-                <div class="card sidebar-card">
-                    <h3 class="section-header">Self-Improvement Log</h3>
-                    <div class="improvement-log" id="improvement-log">
-                        <div class="log-entry"><span class="timestamp">[--:--:--]</span> Initializing...</div>
+                <div class="card" style="margin-top: 12px;">
+                    <div class="card-title">Strange Loop Detector</div>
+                    <div class="loop-viz">
+                        <svg class="loop-svg" viewBox="0 0 160 160" id="loop-svg"></svg>
+                        <div class="loop-stats">
+                            <div class="loop-stat"><div class="loop-stat-label">Loops Detected</div><div class="loop-stat-value" id="loop-count">0</div></div>
+                            <div class="loop-stat"><div class="loop-stat-label">Self-Ref Depth</div><div class="loop-stat-value" id="self-ref-depth">3</div></div>
+                            <div class="loop-stat"><div class="loop-stat-label">Coherence</div><div class="loop-stat-value" id="coherence">--%</div></div>
+                        </div>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="godel-row" id="godel-row">
+            <div class="godel-metric"><div class="godel-metric-label">Gödel Number</div><div class="godel-metric-value" id="godel-number">--</div></div>
+            <div class="godel-metric"><div class="godel-metric-label">Improvement Cycles</div><div class="godel-metric-value" id="cycles">--</div></div>
+            <div class="godel-metric"><div class="godel-metric-label">Meta Level</div><div class="godel-metric-value" id="meta-level">L0</div></div>
+            <div class="godel-metric"><div class="godel-metric-label">Volatility</div><div class="godel-metric-value" id="vol-display">--%</div></div>
+            <div class="godel-metric"><div class="godel-metric-label">RSI (sim)</div><div class="godel-metric-value" id="rsi-display">--</div></div>
+            <div class="godel-metric"><div class="godel-metric-label">MACD Signal</div><div class="godel-metric-value" id="macd-display">--</div></div>
+        </div>
+
+        <div class="log-panel" id="improvement-log">
+            <div class="log-entry"><span class="ts">[--:--:--]</span> Initializing Gödel Machine...</div>
         </div>
     </main>
 
     <footer class="footer">
-        Gödel Machine Trading Analysis | Crypto data: CoinGecko | Metals data: Real-time spot prices | Self-referential system inspired by Gödel's Incompleteness Theorems
+        Gödel Machine | Crypto: CoinGecko | Metals: Multi-API Rotation | Gödel's Incompleteness Theorems Applied to Market Analysis
     </footer>
 
     <script>
-        // Asset configuration
+        // ========== CONFIG ==========
         const assets = {
-            // Crypto assets (CoinGecko)
-            bitcoin: { symbol: 'BTC', name: 'Bitcoin', decimals: 2, type: 'crypto' },
-            ethereum: { symbol: 'ETH', name: 'Ethereum', decimals: 2, type: 'crypto' },
-            solana: { symbol: 'SOL', name: 'Solana', decimals: 2, type: 'crypto' },
-            hyperliquid: { symbol: 'HYPE', name: 'Hyperliquid', decimals: 4, type: 'crypto' },
-            cardano: { symbol: 'ADA', name: 'Cardano', decimals: 4, type: 'crypto' },
-            dogecoin: { symbol: 'DOGE', name: 'Dogecoin', decimals: 6, type: 'crypto' },
-            chainlink: { symbol: 'LINK', name: 'Chainlink', decimals: 2, type: 'crypto' },
-            // Precious metals (separate API)
-            gold: { symbol: 'GOLD', name: 'Gold Futures', decimals: 2, type: 'metal' },
-            silver: { symbol: 'SILVER', name: 'Silver Futures', decimals: 2, type: 'metal' }
+            bitcoin:     { symbol: 'BTC',    name: 'Bitcoin',      decimals: 2, type: 'crypto' },
+            ethereum:    { symbol: 'ETH',    name: 'Ethereum',     decimals: 2, type: 'crypto' },
+            solana:      { symbol: 'SOL',    name: 'Solana',       decimals: 2, type: 'crypto' },
+            hyperliquid: { symbol: 'HYPE',   name: 'Hyperliquid',  decimals: 4, type: 'crypto' },
+            cardano:     { symbol: 'ADA',    name: 'Cardano',      decimals: 4, type: 'crypto' },
+            dogecoin:    { symbol: 'DOGE',   name: 'Dogecoin',     decimals: 6, type: 'crypto' },
+            chainlink:   { symbol: 'LINK',   name: 'Chainlink',    decimals: 2, type: 'crypto' },
+            gold:        { symbol: 'GOLD',   name: 'Gold Futures', decimals: 2, type: 'metal' },
+            silver:      { symbol: 'SILVER', name: 'Silver Futures', decimals: 2, type: 'metal' }
         };
 
-        // State
+        const INCOMPLETENESS_TYPES = ['IC','HN','SR','IG','RS','OE','CL'];
+        const INCOMPLETENESS_NAMES = ['Indicator Contradiction','Historical Novelty','Self-Reference Paradox','Information Gap','Regime Superposition','Observer Effect','Complexity Limit'];
+
+        // ========== STATE ==========
         let currentAsset = 'bitcoin';
         let priceHistory = {};
         let allPrices = {};
-
-        // Metal prices state
+        let assetAnalysis = {}; // per-asset analysis results
         let lastMetalPrices = { gold: null, silver: null };
-        let metalPreviousPrices = { gold: null, silver: null }; // For 24h change calc
-        let metalApiIndex = 0; // Rotate through APIs
-        let metalLastFetchTime = 0;
-
-        // Strange loop tracking - predictions that feed back into themselves
+        let metalPreviousPrices = { gold: null, silver: null };
+        let metalApiIndex = 0;
         let strangeLoopCount = 0;
-        let previousPredictions = {}; // Track meta-prediction divergence
+        let previousPredictions = {};
+        let improvementCycles = 0;
 
-        // Initialize price history for all assets
-        Object.keys(assets).forEach(asset => {
-            priceHistory[asset] = [];
-        });
+        Object.keys(assets).forEach(a => { priceHistory[a] = []; assetAnalysis[a] = {}; });
 
-        // Metal API sources (rotate through these) - multiple reliable sources
+        allPrices['gold'] = { price: 2890, change: 0, isPlaceholder: true };
+        allPrices['silver'] = { price: 32.50, change: 0, isPlaceholder: true };
+
+        // ========== METAL APIs ==========
         const metalApis = [
             {
                 name: 'CoinGecko-Tokens',
                 fetch: async () => {
-                    // Use both PAXG and XAUT (both = 1 oz gold)
                     const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold,tether-gold&vs_currencies=usd&include_24hr_change=true');
                     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                     const data = await resp.json();
-
-                    let goldPrice = null, goldChange = null;
-
-                    // Try PAXG first, then XAUT
-                    if (data['pax-gold']?.usd) {
-                        goldPrice = data['pax-gold'].usd;
-                        goldChange = data['pax-gold'].usd_24h_change || 0;
-                    } else if (data['tether-gold']?.usd) {
-                        goldPrice = data['tether-gold'].usd;
-                        goldChange = data['tether-gold'].usd_24h_change || 0;
-                    }
-
-                    if (goldPrice) {
-                        return {
-                            gold: { price: goldPrice, change: goldChange },
-                            silver: null
-                        };
-                    }
-                    throw new Error('No tokenized gold data');
+                    let gp = null, gc = null;
+                    if (data['pax-gold']?.usd) { gp = data['pax-gold'].usd; gc = data['pax-gold'].usd_24h_change || 0; }
+                    else if (data['tether-gold']?.usd) { gp = data['tether-gold'].usd; gc = data['tether-gold'].usd_24h_change || 0; }
+                    if (gp) return { gold: { price: gp, change: gc }, silver: null };
+                    throw new Error('No tokenized gold');
                 }
             },
             {
@@ -865,872 +398,613 @@
                     const resp = await fetch('https://api.metals.live/v1/spot');
                     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                     const data = await resp.json();
-
                     if (Array.isArray(data) && data.length > 0) {
-                        const spot = data[0];
+                        const s = data[0];
                         return {
-                            gold: spot.gold ? { price: parseFloat(spot.gold), change: null } : null,
-                            silver: spot.silver ? { price: parseFloat(spot.silver), change: null } : null
+                            gold: s.gold ? { price: parseFloat(s.gold), change: null } : null,
+                            silver: s.silver ? { price: parseFloat(s.silver), change: null } : null
                         };
                     }
-                    throw new Error('Invalid metals.live response');
+                    throw new Error('Invalid metals.live');
                 }
             },
             {
                 name: 'Gold-API-Live',
                 fetch: async () => {
-                    // Alternative metals endpoint
                     const resp = await fetch('https://data-asg.goldprice.org/dbXRates/USD');
                     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                     const data = await resp.json();
-
                     if (data.items && data.items[0]) {
-                        const item = data.items[0];
+                        const it = data.items[0];
                         return {
-                            gold: item.xauPrice ? { price: item.xauPrice, change: item.chgXau || 0 } : null,
-                            silver: item.xagPrice ? { price: item.xagPrice, change: item.chgXag || 0 } : null
+                            gold: it.xauPrice ? { price: it.xauPrice, change: it.chgXau || 0 } : null,
+                            silver: it.xagPrice ? { price: it.xagPrice, change: it.chgXag || 0 } : null
                         };
                     }
-                    throw new Error('No goldprice.org data');
+                    throw new Error('No goldprice data');
                 }
             },
             {
                 name: 'FX-Rates-XAU',
                 fetch: async () => {
-                    // Use exchange rates API for XAU/XAG
                     const resp = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=XAU,XAG');
                     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                     const data = await resp.json();
-
                     if (data.rates) {
-                        // XAU/XAG rates are inverted (USD per oz = 1/rate)
-                        const goldPrice = data.rates.XAU ? 1 / data.rates.XAU : null;
-                        const silverPrice = data.rates.XAG ? 1 / data.rates.XAG : null;
-
-                        return {
-                            gold: goldPrice ? { price: goldPrice, change: null } : null,
-                            silver: silverPrice ? { price: silverPrice, change: null } : null
-                        };
+                        const gp = data.rates.XAU ? 1 / data.rates.XAU : null;
+                        const sp = data.rates.XAG ? 1 / data.rates.XAG : null;
+                        return { gold: gp ? { price: gp, change: null } : null, silver: sp ? { price: sp, change: null } : null };
                     }
-                    throw new Error('No FX rates data');
+                    throw new Error('No FX rates');
                 }
             }
         ];
 
-        // Initialize with placeholder until first API fetch (marked as placeholder)
-        allPrices['gold'] = { price: 2890, change: 0, isPlaceholder: true };
-        allPrices['silver'] = { price: 32.50, change: 0, isPlaceholder: true };
+        // ========== HELPERS ==========
+        function safeNumber(v, fb = 0) { return (v == null || isNaN(v) || !isFinite(v)) ? fb : v; }
+        function formatPrice(p, d = 2) {
+            if (p == null || isNaN(p) || !isFinite(p)) return '$--';
+            return p >= 1000 ? '$' + p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$' + p.toFixed(d);
+        }
+        function formatPct(v) {
+            if (v == null || isNaN(v) || !isFinite(v)) return '+0.00%';
+            return (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+        }
+        function isValidGoldPrice(p) { return p > 1500 && p < 5000; }
+        function isValidSilverPrice(p) { return p > 15 && p < 100; }
 
-        // Update time display
+        // ========== TIME ==========
         function updateTime() {
             const now = new Date();
-            const options = {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            };
-            document.getElementById('current-time').textContent = now.toLocaleDateString('en-US', options);
+            document.getElementById('current-time').textContent = now.toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
         }
         setInterval(updateTime, 1000);
         updateTime();
 
-        // Format currency - with null/NaN safety
-        function formatPrice(price, decimals = 2) {
-            if (price == null || isNaN(price) || !isFinite(price)) {
-                return '$--';
-            }
-            if (price >= 1000) {
-                return '$' + price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            }
-            return '$' + price.toFixed(decimals);
-        }
-
-        // Format percentage - with null/NaN safety
-        function formatPercent(value) {
-            if (value == null || isNaN(value) || !isFinite(value)) {
-                return '+0.00%';
-            }
-            const sign = value >= 0 ? '+' : '';
-            return sign + value.toFixed(2) + '%';
-        }
-
-        // Safe number helper
-        function safeNumber(val, fallback = 0) {
-            if (val == null || isNaN(val) || !isFinite(val)) return fallback;
-            return val;
-        }
-
-        // Fetch crypto prices from CoinGecko
+        // ========== FETCH CRYPTO ==========
         async function fetchCryptoPrices() {
-            try {
-                const cryptoAssets = Object.keys(assets).filter(a => assets[a].type === 'crypto');
-                const ids = cryptoAssets.join(',');
-                const response = await fetch(
-                    `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`
-                );
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const data = await response.json();
-
-                cryptoAssets.forEach(asset => {
-                    if (data[asset]) {
-                        const price = data[asset].usd;
-                        const change = data[asset].usd_24h_change || 0;
-
-                        allPrices[asset] = { price, change };
-
-                        // Add to history
-                        priceHistory[asset].push({
-                            time: Date.now(),
-                            price: price
-                        });
-
-                        // Keep last 100 points
-                        if (priceHistory[asset].length > 100) {
-                            priceHistory[asset].shift();
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Error fetching crypto prices:', error);
-                addLogEntry('Crypto API error - using cached data');
-            }
+            const ca = Object.keys(assets).filter(a => assets[a].type === 'crypto');
+            const resp = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ca.join(',')}&vs_currencies=usd&include_24hr_change=true`);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            ca.forEach(a => {
+                if (data[a]) {
+                    allPrices[a] = { price: data[a].usd, change: data[a].usd_24h_change || 0 };
+                    priceHistory[a].push({ time: Date.now(), price: data[a].usd });
+                    if (priceHistory[a].length > 100) priceHistory[a].shift();
+                }
+            });
         }
 
-        // Validate metal prices are in reasonable range
-        function isValidGoldPrice(price) {
-            return price > 1500 && price < 5000; // Gold typically $1500-$5000/oz
-        }
-
-        function isValidSilverPrice(price) {
-            return price > 15 && price < 100; // Silver typically $15-$100/oz
-        }
-
-        // Fetch metal prices from multiple rotating APIs
+        // ========== FETCH METALS ==========
         async function fetchMetalPrices() {
-            let goldData = null;
-            let silverData = null;
-
-            // Try ALL APIs until we get both gold AND silver
+            let gd = null, sd = null;
             for (let i = 0; i < metalApis.length; i++) {
-                const apiIndex = (metalApiIndex + i) % metalApis.length;
-                const api = metalApis[apiIndex];
-
+                const idx = (metalApiIndex + i) % metalApis.length;
+                const api = metalApis[idx];
                 try {
                     addLogEntry(`Trying ${api.name}...`);
-                    const result = await api.fetch();
-
-                    // Check gold
-                    if (!goldData && result.gold && isValidGoldPrice(result.gold.price)) {
-                        goldData = result.gold;
-                        addLogEntry(`✓ Gold: $${result.gold.price.toFixed(2)} (${api.name})`);
-                    }
-
-                    // Check silver
-                    if (!silverData && result.silver && isValidSilverPrice(result.silver.price)) {
-                        silverData = result.silver;
-                        addLogEntry(`✓ Silver: $${result.silver.price.toFixed(2)} (${api.name})`);
-                    }
-
-                    // If we have both, we're done
-                    if (goldData && silverData) {
-                        metalApiIndex = (apiIndex + 1) % metalApis.length;
-                        break;
-                    }
-                } catch (err) {
-                    addLogEntry(`✗ ${api.name}: ${err.message}`);
-                    console.log(`${api.name} failed:`, err.message);
-                }
+                    const r = await api.fetch();
+                    if (!gd && r.gold && isValidGoldPrice(r.gold.price)) { gd = r.gold; addLogEntry(`Gold: $${r.gold.price.toFixed(2)} (${api.name})`); }
+                    if (!sd && r.silver && isValidSilverPrice(r.silver.price)) { sd = r.silver; addLogEntry(`Silver: $${r.silver.price.toFixed(2)} (${api.name})`); }
+                    if (gd && sd) { metalApiIndex = (idx + 1) % metalApis.length; break; }
+                } catch (e) { addLogEntry(`${api.name}: ${e.message}`); }
             }
 
-            // Log final status
-            if (!goldData) addLogEntry('⚠ No valid gold price from any API');
-            if (!silverData) addLogEntry('⚠ No valid silver price from any API');
-
-            // Update gold price
-            if (goldData && goldData.price > 0) {
-                // If transitioning from placeholder, clear history to avoid fake momentum
-                if (allPrices['gold']?.isPlaceholder) {
-                    priceHistory['gold'] = [];
-                }
-
-                // Calculate 24h change if we have previous price
-                let goldChange = goldData.change;
-                if (goldChange == null && metalPreviousPrices.gold && metalPreviousPrices.gold > 0) {
-                    goldChange = ((goldData.price - metalPreviousPrices.gold) / metalPreviousPrices.gold) * 100;
-                }
-                if (goldChange == null || !isFinite(goldChange)) goldChange = 0;
-
-                lastMetalPrices.gold = goldData.price;
-                if (!metalPreviousPrices.gold) metalPreviousPrices.gold = goldData.price;
-
-                allPrices['gold'] = {
-                    price: goldData.price,
-                    change: safeNumber(goldChange, 0),
-                    isPlaceholder: false
-                };
+            if (gd && gd.price > 0) {
+                if (allPrices['gold']?.isPlaceholder) priceHistory['gold'] = [];
+                let gc = gd.change;
+                if (gc == null && metalPreviousPrices.gold && metalPreviousPrices.gold > 0) gc = ((gd.price - metalPreviousPrices.gold) / metalPreviousPrices.gold) * 100;
+                if (gc == null || !isFinite(gc)) gc = 0;
+                lastMetalPrices.gold = gd.price;
+                if (!metalPreviousPrices.gold) metalPreviousPrices.gold = gd.price;
+                allPrices['gold'] = { price: gd.price, change: safeNumber(gc, 0), isPlaceholder: false };
             }
 
-            // Update silver price
-            if (silverData && silverData.price > 0) {
-                // If transitioning from placeholder, clear history to avoid fake momentum
-                if (allPrices['silver']?.isPlaceholder) {
-                    priceHistory['silver'] = [];
-                }
-
-                let silverChange = silverData.change;
-                if (silverChange == null && metalPreviousPrices.silver && metalPreviousPrices.silver > 0) {
-                    silverChange = ((silverData.price - metalPreviousPrices.silver) / metalPreviousPrices.silver) * 100;
-                }
-                if (silverChange == null || !isFinite(silverChange)) silverChange = 0;
-
-                lastMetalPrices.silver = silverData.price;
-                if (!metalPreviousPrices.silver) metalPreviousPrices.silver = silverData.price;
-
-                allPrices['silver'] = {
-                    price: silverData.price,
-                    change: safeNumber(silverChange, 0),
-                    isPlaceholder: false
-                };
+            if (sd && sd.price > 0) {
+                if (allPrices['silver']?.isPlaceholder) priceHistory['silver'] = [];
+                let sc = sd.change;
+                if (sc == null && metalPreviousPrices.silver && metalPreviousPrices.silver > 0) sc = ((sd.price - metalPreviousPrices.silver) / metalPreviousPrices.silver) * 100;
+                if (sc == null || !isFinite(sc)) sc = 0;
+                lastMetalPrices.silver = sd.price;
+                if (!metalPreviousPrices.silver) metalPreviousPrices.silver = sd.price;
+                allPrices['silver'] = { price: sd.price, change: safeNumber(sc, 0), isPlaceholder: false };
             }
 
-            // If silver still not available, estimate from gold/silver ratio (~88:1 historically)
-            if (!silverData && goldData) {
-                // If transitioning from placeholder, clear history
-                if (allPrices['silver']?.isPlaceholder) {
-                    priceHistory['silver'] = [];
-                }
-
-                const estimatedSilver = goldData.price / 88;
-                const silverChange = allPrices['silver']?.isPlaceholder ? 0 : (allPrices['silver']?.change || 0);
-                allPrices['silver'] = {
-                    price: estimatedSilver,
-                    change: silverChange,
-                    isPlaceholder: false
-                };
-                lastMetalPrices.silver = estimatedSilver;
-                addLogEntry(`Silver estimated from ratio: $${estimatedSilver.toFixed(2)}`);
+            if (!sd && gd) {
+                if (allPrices['silver']?.isPlaceholder) priceHistory['silver'] = [];
+                const est = gd.price / 88;
+                allPrices['silver'] = { price: est, change: 0, isPlaceholder: false };
+                lastMetalPrices.silver = est;
+                addLogEntry(`Silver est. from ratio: $${est.toFixed(2)}`);
             }
 
-            // Add to history for charting
-            ['gold', 'silver'].forEach(metal => {
-                if (allPrices[metal] && allPrices[metal].price > 0) {
-                    priceHistory[metal].push({
-                        time: Date.now(),
-                        price: allPrices[metal].price
-                    });
-                    if (priceHistory[metal].length > 100) {
-                        priceHistory[metal].shift();
-                    }
+            ['gold','silver'].forEach(m => {
+                if (allPrices[m] && allPrices[m].price > 0) {
+                    priceHistory[m].push({ time: Date.now(), price: allPrices[m].price });
+                    if (priceHistory[m].length > 100) priceHistory[m].shift();
                 }
             });
-
-            metalLastFetchTime = Date.now();
         }
 
-        // Fetch all prices with error handling
-        async function fetchPrices() {
-            // Fetch crypto and metals in parallel
-            const cryptoPromise = fetchCryptoPrices().catch(err => {
-                console.error('Crypto fetch error:', err);
-                addLogEntry('Crypto API error - using cached');
-            });
-
-            const metalPromise = fetchMetalPrices().catch(err => {
-                console.error('Metal fetch error:', err);
-                addLogEntry('Metals API error - using cached');
-            });
-
-            // Wait for both
-            await Promise.all([cryptoPromise, metalPromise]);
-
-            // Update UI even if some fetches failed
-            try {
-                updateTicker();
-                updateDisplay();
-                updateChart();
-                runGodelAnalysis();
-                updateMomentumBanner();
-            } catch (err) {
-                console.error('UI update error:', err);
-            }
-        }
-
-        // Update ticker bar
-        function updateTicker() {
-            const ticker = document.getElementById('ticker');
-            if (!ticker) return;
-
-            let html = '';
-
-            // Order: crypto first, then metals
-            const orderedAssets = [
-                ...Object.keys(assets).filter(a => assets[a].type === 'crypto'),
-                ...Object.keys(assets).filter(a => assets[a].type === 'metal')
-            ];
-
-            // Duplicate for seamless scrolling
-            for (let i = 0; i < 2; i++) {
-                orderedAssets.forEach(asset => {
-                    const info = assets[asset];
-                    const data = allPrices[asset] || { price: 0, change: 0 };
-                    const changeClass = data.change >= 0 ? 'positive' : 'negative';
-                    const symbolClass = info.type === 'metal' ? 'ticker-symbol metal' : 'ticker-symbol';
-
-                    html += `
-                        <div class="ticker-item">
-                            <span class="${symbolClass}">${info.symbol}</span>
-                            <span class="ticker-price">${formatPrice(data.price, info.decimals)}</span>
-                            <span class="ticker-change ${changeClass}">${formatPercent(data.change)}</span>
-                        </div>
-                    `;
-                });
-            }
-
-            ticker.innerHTML = html;
-        }
-
-        // Update main display
-        function updateDisplay() {
-            const info = assets[currentAsset];
-            if (!info) return;
-
-            const data = allPrices[currentAsset] || { price: 0, change: 0 };
-
-            const nameEl = document.getElementById('asset-name');
-            const priceEl = document.getElementById('current-price');
-            const changeEl = document.getElementById('price-change');
-
-            if (nameEl) nameEl.textContent = `${info.name} (${info.symbol})`;
-            if (priceEl) priceEl.textContent = formatPrice(data.price, info.decimals);
-            if (changeEl) {
-                changeEl.textContent = formatPercent(data.change);
-                changeEl.className = 'price-change ' + (data.change >= 0 ? 'positive' : 'negative');
-            }
-        }
-
-        // Draw chart
-        function updateChart() {
-            const canvas = document.getElementById('price-chart');
-            if (!canvas) return;
-
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return;
-
-            const history = priceHistory[currentAsset] || [];
-
-            // Set canvas size
-            const parent = canvas.parentElement;
-            if (!parent) return;
-
-            const rect = parent.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
-            ctx.scale(dpr, dpr);
-
-            const width = rect.width;
-            const height = rect.height;
-
-            // Clear
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, width, height);
-
-            if (!history || history.length < 2) {
-                ctx.fillStyle = '#666666';
-                ctx.font = '14px Libre Franklin';
-                ctx.textAlign = 'center';
-                ctx.fillText('Collecting data...', width / 2, height / 2);
-                return;
-            }
-
-            // Calculate bounds with safety
-            const prices = history.map(h => safeNumber(h.price, 0)).filter(p => p > 0);
-            if (prices.length < 2) {
-                ctx.fillStyle = '#666666';
-                ctx.font = '14px Libre Franklin';
-                ctx.textAlign = 'center';
-                ctx.fillText('Waiting for valid prices...', width / 2, height / 2);
-                return;
-            }
-
-            const minPrice = Math.min(...prices) * 0.999;
-            const maxPrice = Math.max(...prices) * 1.001;
-            const priceRange = Math.max(maxPrice - minPrice, 0.01); // Ensure non-zero
-
-            const padding = { top: 20, right: 60, bottom: 30, left: 20 };
-            const chartWidth = width - padding.left - padding.right;
-            const chartHeight = height - padding.top - padding.bottom;
-
-            // Draw grid
-            ctx.strokeStyle = '#EEEEEE';
-            ctx.lineWidth = 1;
-
-            for (let i = 0; i <= 5; i++) {
-                const y = padding.top + (chartHeight / 5) * i;
-                ctx.beginPath();
-                ctx.moveTo(padding.left, y);
-                ctx.lineTo(width - padding.right, y);
-                ctx.stroke();
-
-                // Price labels
-                const price = maxPrice - (priceRange / 5) * i;
-                ctx.fillStyle = '#999999';
-                ctx.font = '11px Source Code Pro';
-                ctx.textAlign = 'right';
-                ctx.fillText(formatPrice(price, assets[currentAsset].decimals), width - 5, y + 4);
-            }
-
-            // Draw price line with safety checks
-            const firstPrice = safeNumber(history[0].price, 1);
-            const lastPrice = safeNumber(history[history.length - 1].price, firstPrice);
-            const isPositive = lastPrice >= firstPrice;
-            ctx.strokeStyle = isPositive ? '#14853D' : '#C72C41';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-
-            const historyLen = history.length;
-            history.forEach((point, i) => {
-                const pointPrice = safeNumber(point.price, firstPrice);
-                const divisor = Math.max(historyLen - 1, 1);
-                const x = padding.left + (i / divisor) * chartWidth;
-                const y = padding.top + ((maxPrice - pointPrice) / priceRange) * chartHeight;
-
-                if (i === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
-            });
-            ctx.stroke();
-
-            // Draw area fill
-            ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
-            ctx.lineTo(padding.left, padding.top + chartHeight);
-            ctx.closePath();
-
-            const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartHeight);
-            if (isPositive) {
-                gradient.addColorStop(0, 'rgba(20, 133, 61, 0.2)');
-                gradient.addColorStop(1, 'rgba(20, 133, 61, 0)');
-            } else {
-                gradient.addColorStop(0, 'rgba(199, 44, 65, 0.2)');
-                gradient.addColorStop(1, 'rgba(199, 44, 65, 0)');
-            }
-            ctx.fillStyle = gradient;
-            ctx.fill();
-
-            // Current price dot
-            const lastX = padding.left + chartWidth;
-            const lastY = padding.top + ((maxPrice - lastPrice) / priceRange) * chartHeight;
-
-            ctx.beginPath();
-            ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
-            ctx.fillStyle = isPositive ? '#14853D' : '#C72C41';
-            ctx.fill();
-        }
-
-        // Generate Gödel number from price data
-        function generateGodelNumber(prices) {
-            if (!prices || prices.length === 0) return '--';
-
-            const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29];
-            let godel = 1n;
-
-            try {
-                const recentPrices = prices.slice(-10);
-                recentPrices.forEach((p, i) => {
-                    if (i < primes.length && p && p.price != null) {
-                        const priceVal = safeNumber(p.price, 1);
-                        const encoded = Math.floor(Math.abs(priceVal * 100)) % 100;
-                        godel *= BigInt(primes[i]) ** BigInt(Math.max(1, encoded));
-                    }
-                });
-
-                // Return shortened representation
-                const str = godel.toString();
-                if (str.length > 12) {
-                    return str.substring(0, 6) + '...' + str.substring(str.length - 6);
-                }
-                return str;
-            } catch (e) {
-                console.error('Gödel number generation error:', e);
-                return '--';
-            }
-        }
-
-        // Calculate forward expected returns
-        function calculateExpectedReturns(price, change24h, volatility) {
-            const hourlyVol = volatility / Math.sqrt(24);
-            const momentum = change24h / 24; // Hourly momentum estimate
-
-            return [
-                {
-                    timeframe: '1 Hour',
-                    return: momentum * 1.2 + (Math.random() - 0.5) * hourlyVol,
-                    confidence: 0.75 - volatility * 0.1
-                },
-                {
-                    timeframe: '4 Hours',
-                    return: momentum * 3.5 + (Math.random() - 0.5) * hourlyVol * 2,
-                    confidence: 0.65 - volatility * 0.1
-                },
-                {
-                    timeframe: '24 Hours',
-                    return: change24h * 0.8 + (Math.random() - 0.5) * volatility,
-                    confidence: 0.55 - volatility * 0.1
-                },
-                {
-                    timeframe: '7 Days',
-                    return: change24h * 2.5 + (Math.random() - 0.5) * volatility * 3,
-                    confidence: 0.40 - volatility * 0.1
-                },
-                {
-                    timeframe: '30 Days',
-                    return: change24h * 5 + (Math.random() - 0.5) * volatility * 5,
-                    confidence: 0.25 - volatility * 0.1
-                }
-            ].map(r => ({
-                ...r,
-                confidence: Math.max(0.1, Math.min(0.95, r.confidence)),
-                priceTarget: price * (1 + r.return / 100)
-            }));
-        }
-
-        // Run Gödel analysis
-        function runGodelAnalysis() {
-            const data = allPrices[currentAsset];
-            const history = priceHistory[currentAsset];
-
-            // Validate we have enough data
-            if (!data || !history || history.length < 2) return;
+        // ========== ANALYSIS ENGINE ==========
+        function analyzeAsset(assetKey) {
+            const data = allPrices[assetKey];
+            const hist = priceHistory[assetKey];
+            if (!data || !hist || hist.length < 1) return null;
 
             const price = safeNumber(data.price, 1);
             const change = safeNumber(data.change, 0);
 
-            // Calculate volatility from history with safety checks
+            // Volatility
             let volatility = 0;
-            if (history.length > 1) {
-                const returns = [];
-                for (let i = 1; i < history.length; i++) {
-                    const prevPrice = safeNumber(history[i-1].price, 1);
-                    const currPrice = safeNumber(history[i].price, prevPrice);
-                    if (prevPrice !== 0) {
-                        const ret = (currPrice - prevPrice) / prevPrice * 100;
-                        if (isFinite(ret)) returns.push(ret);
-                    }
+            if (hist.length > 1) {
+                const rets = [];
+                for (let i = 1; i < hist.length; i++) {
+                    const pp = safeNumber(hist[i-1].price, 1);
+                    const cp = safeNumber(hist[i].price, pp);
+                    if (pp > 0) { const r = (cp - pp) / pp * 100; if (isFinite(r)) rets.push(r); }
                 }
-                if (returns.length > 0) {
-                    const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
-                    const variance = returns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / returns.length;
-                    volatility = Math.sqrt(Math.max(0, variance)); // Ensure non-negative
+                if (rets.length > 0) {
+                    const mean = rets.reduce((a,b) => a+b, 0) / rets.length;
+                    const v = rets.reduce((a,b) => a + Math.pow(b-mean,2), 0) / rets.length;
+                    volatility = Math.sqrt(Math.max(0, v));
                 }
             }
             volatility = safeNumber(volatility, 0);
 
-            // Expected returns
-            const expectedReturns = calculateExpectedReturns(price, change, volatility);
-            updateReturnsTable(expectedReturns);
+            // Indicators
+            const rsi = 50 + change * 2;
+            const p3 = hist.length >= 3 ? safeNumber(hist[hist.length-3].price, 1) : 1;
+            const rc = hist.length >= 3 && p3 > 0 ? ((safeNumber(hist[hist.length-1].price,1) - p3) / p3) * 100 : change;
+            const macdSignal = change - rc;
+            const pv = hist.map(h => safeNumber(h.price,0)).filter(p => p > 0);
+            const meanP = pv.length > 0 ? pv.reduce((a,b) => a+b, 0) / pv.length : price;
+            const dev = meanP > 0 ? Math.abs(price - meanP) / meanP * 100 : 0;
+            const prevP = hist.length >= 2 ? safeNumber(hist[hist.length-2].price, price) : price;
+            const micro = prevP > 0 ? ((price - prevP) / prevP) * 100 : 0;
 
-            // Meta-prediction levels
-            const metaLevels = [
-                { name: 'L0 - Base Prediction', value: change > 0 ? 'BULLISH' : 'BEARISH' },
-                { name: 'L1 - Error Correction', value: formatPercent(change * 0.15) },
-                { name: 'L2 - Trend Analysis', value: Math.abs(change) > 2 ? 'STRONG' : 'WEAK' },
-                { name: 'L3 - Volatility Model', value: volatility.toFixed(2) + '%' }
+            // 7 Incompleteness types
+            const inc = [
+                (rsi > 65 && macdSignal < -0.5) || (rsi < 35 && macdSignal > 0.5),  // IC
+                dev > 5 || hist.length < 5,                                            // HN
+                (change > 1 && micro < -0.2) || (change < -1 && micro > 0.2),        // SR
+                hist.length < 20 || allPrices[assetKey]?.isPlaceholder === true,      // IG
+                Math.abs(change) < 0.5 && volatility > 1,                             // RS
+                volatility > 3 && hist.length < 30,                                    // OE
+                volatility > 5 || (volatility > 3 && (dev > 5 || hist.length < 5))   // CL
             ];
-            updateMetaLevels(metaLevels);
 
-            // Incompleteness detection - all 7 types from GODEL_README.md
-            // Calculate additional metrics for detection
-            const rsi = 50 + change * 2; // Simulated RSI based on momentum
+            const hasInc = inc.some(Boolean);
+            let decision;
+            if (hasInc) decision = 'ABSTAIN';
+            else if (change > 3 && volatility < 3) decision = 'BUY';
+            else if (change < -3 && volatility < 3) decision = 'SELL';
+            else decision = 'HOLD';
 
-            // MACD uses lagged data - simulate with historical average
-            const price3ago = history.length >= 3 ? safeNumber(history[history.length-3].price, 1) : 1;
-            const recentChange = history.length >= 3 && price3ago > 0
-                ? ((safeNumber(history[history.length-1].price, 1) - price3ago) / price3ago) * 100
-                : change;
-            const macdSignal = change - recentChange; // Divergence between current and recent
-
-            // Check for indicator contradiction (RSI overbought but momentum fading, or vice versa)
-            const indicatorContradiction = (rsi > 65 && macdSignal < -0.5) || (rsi < 35 && macdSignal > 0.5);
-
-            // Check for historical novelty (price at extreme deviation from mean)
-            const priceValues = history.map(h => safeNumber(h.price, 0)).filter(p => p > 0);
-            const meanPrice = priceValues.length > 0 ? priceValues.reduce((a, b) => a + b, 0) / priceValues.length : price;
-            const priceDeviation = meanPrice > 0 ? Math.abs(price - meanPrice) / meanPrice * 100 : 0;
-            const historicalNovelty = priceDeviation > 5 || history.length < 5;
-
-            // Self-reference paradox: L0 says one thing but market moved opposite since last check
-            const prevPrice = history.length >= 2 ? safeNumber(history[history.length-2].price, price) : price;
-            const microMove = prevPrice > 0 ? ((price - prevPrice) / prevPrice) * 100 : 0;
-            const selfReferenceParadox = (change > 1 && microMove < -0.2) || (change < -1 && microMove > 0.2);
-
-            // Information gap: insufficient data or placeholder data
-            const informationGap = history.length < 20 || allPrices[currentAsset]?.isPlaceholder;
-
-            // Regime superposition: neither clearly bullish nor bearish
-            const regimeSuperposition = Math.abs(change) < 0.5 && volatility > 1;
-
-            // Observer effect: large trades in thin markets (simulated via high volatility + low volume proxy)
-            const observerEffect = volatility > 3 && history.length < 30;
-
-            // Complexity limit: exceeds modeling capacity (high volatility + novelty)
-            const complexityLimit = volatility > 5 || (volatility > 3 && historicalNovelty);
-
-            const incompleteness = [
-                { name: 'Indicator Contradiction', active: indicatorContradiction },
-                { name: 'Historical Novelty', active: historicalNovelty },
-                { name: 'Self-Reference Paradox', active: selfReferenceParadox },
-                { name: 'Information Gap', active: informationGap },
-                { name: 'Regime Superposition', active: regimeSuperposition },
-                { name: 'Observer Effect', active: observerEffect },
-                { name: 'Complexity Limit', active: complexityLimit }
-            ];
-            updateIncompleteness(incompleteness);
-
-            // Decision logic
-            let decision, rationale;
-            const hasIncompleteness = incompleteness.some(i => i.active);
-
-            if (hasIncompleteness) {
-                decision = 'ABSTAIN';
-                const activeIncomplete = incompleteness.filter(i => i.active).map(i => i.name).join(', ');
-                rationale = `Gödel incompleteness detected: ${activeIncomplete}. The system recognizes the limits of its own predictive framework and abstains from a definitive recommendation.`;
-            } else if (change > 3 && volatility < 3) {
-                decision = 'BUY';
-                rationale = `Strong positive momentum (+${change.toFixed(2)}%) with controlled volatility (${volatility.toFixed(2)}%). Meta-prediction tower shows convergent bullish signals across all levels.`;
-            } else if (change < -3 && volatility < 3) {
-                decision = 'SELL';
-                rationale = `Significant negative momentum (${change.toFixed(2)}%) with controlled volatility (${volatility.toFixed(2)}%). Self-referential analysis indicates continued downward pressure.`;
-            } else {
-                decision = 'HOLD';
-                rationale = `Market in equilibrium state. Change of ${change.toFixed(2)}% with volatility of ${volatility.toFixed(2)}% does not trigger action thresholds. Continuing recursive observation.`;
-            }
-
-            const decisionEl = document.getElementById('decision');
-            const rationaleEl = document.getElementById('rationale');
-            if (decisionEl) {
-                decisionEl.textContent = decision;
-                decisionEl.className = 'decision-value ' + decision.toLowerCase();
-            }
-            if (rationaleEl) rationaleEl.textContent = rationale;
-
-            // Strange loop detection: compare current prediction to previous
-            const currentPrediction = change > 0 ? 'BULLISH' : 'BEARISH';
-            const prevPred = previousPredictions[currentAsset];
-            if (prevPred && prevPred !== currentPrediction) {
-                // Prediction flipped - potential strange loop (self-fulfilling prophecy reversal)
+            // Strange loop detection
+            const pred = change > 0 ? 'BULLISH' : 'BEARISH';
+            if (previousPredictions[assetKey] && previousPredictions[assetKey] !== pred) {
                 strangeLoopCount++;
-                addLogEntry(`Strange loop detected: ${prevPred} → ${currentPrediction}`);
+                addLogEntry(`Loop: ${assets[assetKey].symbol} ${previousPredictions[assetKey]} -> ${pred}`);
             }
-            previousPredictions[currentAsset] = currentPrediction;
+            previousPredictions[assetKey] = pred;
 
-            // Count active incompleteness types
-            const activeIncompleteness = incompleteness.filter(i => i.active).length;
-
-            // Update metrics
-            const godelEl = document.getElementById('godel-number');
-            const depthEl = document.getElementById('self-ref-depth');
-            const coherenceEl = document.getElementById('coherence');
-            const cyclesEl = document.getElementById('cycles');
-            const loopsEl = document.getElementById('strange-loops');
-            const incompleteScoreEl = document.getElementById('incompleteness-score');
-
-            if (godelEl) godelEl.textContent = generateGodelNumber(history);
-            if (depthEl) depthEl.textContent = Math.floor(3 + Math.random() * 2);
-            if (coherenceEl) coherenceEl.textContent = (75 + Math.random() * 20).toFixed(1) + '%';
-            if (cyclesEl) cyclesEl.textContent = Math.floor(100 + Math.random() * 50);
-            if (loopsEl) loopsEl.textContent = `${strangeLoopCount} 🔄`;
-            if (incompleteScoreEl) {
-                incompleteScoreEl.textContent = `${activeIncompleteness}/7`;
-                incompleteScoreEl.style.color = activeIncompleteness > 3 ? '#C72C41' : (activeIncompleteness > 0 ? '#C4A747' : '#14853D');
-            }
-
-            // Log entry
-            addLogEntry(`Analyzed ${assets[currentAsset].symbol}: ${decision} (${change.toFixed(2)}%)`);
+            return { price, change, volatility, rsi, macdSignal, inc, decision, pred, dev };
         }
 
-        // Update returns table
-        function updateReturnsTable(returns) {
-            const tbody = document.getElementById('returns-body');
-            if (!tbody || !returns) return;
+        // ========== GÖDEL NUMBER ==========
+        function generateGodelNumber(hist) {
+            if (!hist || hist.length === 0) return '--';
+            const primes = [2,3,5,7,11,13,17,19,23,29];
+            let g = 1n;
+            try {
+                hist.slice(-10).forEach((p, i) => {
+                    if (i < primes.length && p?.price != null) {
+                        const e = Math.floor(Math.abs(safeNumber(p.price,1) * 100)) % 100;
+                        g *= BigInt(primes[i]) ** BigInt(Math.max(1, e));
+                    }
+                });
+                const s = g.toString();
+                return s.length > 12 ? s.slice(0,6) + '...' + s.slice(-6) : s;
+            } catch(e) { return '--'; }
+        }
 
-            const info = assets[currentAsset];
-            if (!info) return;
+        // ========== EXPECTED RETURNS ==========
+        function calcReturns(price, change, vol) {
+            const hv = vol / Math.sqrt(24);
+            const m = change / 24;
+            return [
+                { tf: '1H', r: m*1.2+(Math.random()-0.5)*hv, c: 0.75-vol*0.1 },
+                { tf: '4H', r: m*3.5+(Math.random()-0.5)*hv*2, c: 0.65-vol*0.1 },
+                { tf: '24H', r: change*0.8+(Math.random()-0.5)*vol, c: 0.55-vol*0.1 },
+                { tf: '7D', r: change*2.5+(Math.random()-0.5)*vol*3, c: 0.40-vol*0.1 },
+                { tf: '30D', r: change*5+(Math.random()-0.5)*vol*5, c: 0.25-vol*0.1 }
+            ].map(x => ({ ...x, c: Math.max(0.1, Math.min(0.95, x.c)), t: price*(1+x.r/100) }));
+        }
 
-            tbody.innerHTML = returns.map(r => {
-                const retValue = safeNumber(r.return, 0);
-                const returnClass = retValue >= 0 ? 'positive' : 'negative';
-                const confidence = safeNumber(r.confidence, 0.5);
-                const priceTarget = safeNumber(r.priceTarget, 0);
+        // ========== DRAW SPARKLINE ==========
+        function drawSparkline(canvas, hist, isMetal) {
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            const dpr = window.devicePixelRatio || 1;
+            const w = canvas.parentElement?.offsetWidth || 260;
+            const h = 40;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            canvas.style.width = w + 'px';
+            canvas.style.height = h + 'px';
+            ctx.scale(dpr, dpr);
+            ctx.clearRect(0, 0, w, h);
 
-                return `
-                    <tr>
-                        <td class="timeframe">${r.timeframe || '--'}</td>
-                        <td class="value ${returnClass}">${formatPercent(retValue)}</td>
-                        <td class="value">${formatPrice(priceTarget, info.decimals)}</td>
-                        <td class="confidence">
-                            <span class="confidence-bar">
-                                <span class="confidence-fill" style="width: ${Math.min(100, confidence * 100)}%"></span>
-                            </span>
-                            ${(confidence * 100).toFixed(0)}%
-                        </td>
-                    </tr>
+            if (!hist || hist.length < 2) {
+                ctx.fillStyle = '#CCC';
+                ctx.font = '10px Libre Franklin';
+                ctx.textAlign = 'center';
+                ctx.fillText('...', w/2, h/2+3);
+                return;
+            }
+
+            const prices = hist.map(p => safeNumber(p.price, 0)).filter(p => p > 0);
+            if (prices.length < 2) return;
+
+            const min = Math.min(...prices) * 0.999;
+            const max = Math.max(...prices) * 1.001;
+            const range = Math.max(max - min, 0.01);
+            const isUp = prices[prices.length-1] >= prices[0];
+            const color = isMetal ? '#C4A747' : (isUp ? '#14853D' : '#C72C41');
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            prices.forEach((p, i) => {
+                const x = (i / Math.max(prices.length-1, 1)) * w;
+                const y = h - ((p - min) / range) * (h - 4) - 2;
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Area fill
+            ctx.lineTo(w, h);
+            ctx.lineTo(0, h);
+            ctx.closePath();
+            const grad = ctx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, color + '33');
+            grad.addColorStop(1, color + '00');
+            ctx.fillStyle = grad;
+            ctx.fill();
+        }
+
+        // ========== DRAW RADAR ==========
+        function drawRadar(incArray) {
+            const canvas = document.getElementById('radar-chart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = 240 * dpr;
+            canvas.height = 240 * dpr;
+            canvas.style.width = '240px';
+            canvas.style.height = '240px';
+            ctx.scale(dpr, dpr);
+
+            const cx = 120, cy = 120, r = 90;
+            const n = 7;
+            ctx.clearRect(0, 0, 240, 240);
+
+            // Grid rings
+            [0.33, 0.66, 1].forEach(s => {
+                ctx.beginPath();
+                for (let i = 0; i <= n; i++) {
+                    const a = (Math.PI * 2 / n) * i - Math.PI/2;
+                    const x = cx + Math.cos(a) * r * s;
+                    const y = cy + Math.sin(a) * r * s;
+                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                }
+                ctx.strokeStyle = '#DDD';
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            });
+
+            // Axis lines + labels
+            const shortNames = ['IC','HN','SR','IG','RS','OE','CL'];
+            for (let i = 0; i < n; i++) {
+                const a = (Math.PI * 2 / n) * i - Math.PI/2;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+                ctx.strokeStyle = '#DDD';
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+
+                const lx = cx + Math.cos(a) * (r + 14);
+                const ly = cy + Math.sin(a) * (r + 14);
+                ctx.fillStyle = incArray[i] ? '#C72C41' : '#999';
+                ctx.font = (incArray[i] ? 'bold ' : '') + '10px Source Code Pro';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(shortNames[i], lx, ly);
+            }
+
+            // Data polygon
+            ctx.beginPath();
+            for (let i = 0; i <= n; i++) {
+                const idx = i % n;
+                const a = (Math.PI * 2 / n) * idx - Math.PI/2;
+                const val = incArray[idx] ? 1 : 0.15;
+                const x = cx + Math.cos(a) * r * val;
+                const y = cy + Math.sin(a) * r * val;
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.fillStyle = 'rgba(199, 44, 65, 0.2)';
+            ctx.fill();
+            ctx.strokeStyle = '#C72C41';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Dots
+            for (let i = 0; i < n; i++) {
+                const a = (Math.PI * 2 / n) * i - Math.PI/2;
+                const val = incArray[i] ? 1 : 0.15;
+                const x = cx + Math.cos(a) * r * val;
+                const y = cy + Math.sin(a) * r * val;
+                ctx.beginPath();
+                ctx.arc(x, y, incArray[i] ? 5 : 3, 0, Math.PI*2);
+                ctx.fillStyle = incArray[i] ? '#C72C41' : '#999';
+                ctx.fill();
+            }
+        }
+
+        // ========== DRAW STRANGE LOOP SPIRAL ==========
+        function drawLoopSpiral() {
+            const svg = document.getElementById('loop-svg');
+            if (!svg) return;
+            const t = Date.now() / 1000;
+            let paths = '';
+
+            // Animated spiral
+            for (let s = 0; s < 3; s++) {
+                let d = 'M ';
+                for (let i = 0; i <= 200; i++) {
+                    const angle = (i / 200) * Math.PI * 6 + t * 0.5 + s * (Math.PI * 2 / 3);
+                    const radius = 10 + (i / 200) * 55;
+                    const x = 80 + Math.cos(angle) * radius;
+                    const y = 80 + Math.sin(angle) * radius;
+                    d += `${x.toFixed(1)} ${y.toFixed(1)} `;
+                    if (i === 0) d += 'L ';
+                }
+                const opacity = 0.3 + (s * 0.2);
+                const color = s === 0 ? '#C72C41' : s === 1 ? '#0274B6' : '#C4A747';
+                paths += `<path d="${d}" fill="none" stroke="${color}" stroke-width="1.5" opacity="${opacity}"/>`;
+            }
+
+            // Center dot
+            paths += `<circle cx="80" cy="80" r="4" fill="#111"/>`;
+            paths += `<text x="80" y="83" text-anchor="middle" font-size="5" fill="white" font-family="Source Code Pro">${strangeLoopCount}</text>`;
+
+            svg.innerHTML = paths;
+        }
+
+        // ========== UI UPDATES ==========
+        function renderAssetGrid() {
+            const grid = document.getElementById('asset-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            Object.keys(assets).forEach(key => {
+                const a = assets[key];
+                const d = allPrices[key] || { price: 0, change: 0 };
+                const an = assetAnalysis[key] || {};
+                const isMetal = a.type === 'metal';
+                const isSelected = key === currentAsset;
+
+                const card = document.createElement('div');
+                card.className = 'asset-card' + (isMetal ? ' metal' : '') + (isSelected ? ' selected' : '');
+                card.onclick = () => { currentAsset = key; renderAll(); };
+
+                const dec = an.decision || '--';
+                const chgClass = d.change >= 0 ? 'pos' : 'neg';
+                const incCount = an.inc ? an.inc.filter(Boolean).length : 0;
+
+                card.innerHTML = `
+                    <div class="asset-card-header">
+                        <span class="asset-symbol ${isMetal ? 'metal-sym' : ''}">${a.symbol}</span>
+                        <span class="asset-decision ${dec.toLowerCase()}">${dec}</span>
+                    </div>
+                    <div>
+                        <span class="asset-price">${formatPrice(d.price, a.decimals)}</span>
+                        <span class="asset-change ${chgClass}">${formatPct(d.change)}</span>
+                    </div>
+                    <canvas class="asset-sparkline" id="spark-${key}"></canvas>
+                    <div class="asset-meta">
+                        <span>Inc: ${incCount}/7</span>
+                        <span>Vol: ${an.volatility != null ? an.volatility.toFixed(1) + '%' : '--'}</span>
+                        <span>${an.pred || '--'}</span>
+                    </div>
                 `;
+                grid.appendChild(card);
+            });
+
+            // Draw sparklines after DOM insertion
+            Object.keys(assets).forEach(key => {
+                const canvas = document.getElementById(`spark-${key}`);
+                drawSparkline(canvas, priceHistory[key], assets[key].type === 'metal');
+            });
+        }
+
+        function renderHeatMap() {
+            const body = document.getElementById('heatmap-body');
+            if (!body) return;
+            body.innerHTML = '';
+            Object.keys(assets).forEach(key => {
+                const an = assetAnalysis[key] || {};
+                const inc = an.inc || [false,false,false,false,false,false,false];
+                const tr = document.createElement('tr');
+                let cells = `<td class="heatmap-asset">${assets[key].symbol}</td>`;
+                inc.forEach(active => {
+                    cells += `<td><span class="heatmap-cell ${active ? 'active' : 'inactive'}">${active ? '!' : '-'}</span></td>`;
+                });
+                tr.innerHTML = cells;
+                body.appendChild(tr);
+            });
+        }
+
+        function renderReturns() {
+            const body = document.getElementById('returns-body');
+            if (!body) return;
+            const an = assetAnalysis[currentAsset];
+            if (!an || !an.price) { body.innerHTML = '<tr><td colspan="4">--</td></tr>'; return; }
+            const rets = calcReturns(an.price, an.change, an.volatility);
+            body.innerHTML = rets.map(r => {
+                const rv = safeNumber(r.r, 0);
+                const cls = rv >= 0 ? 'pos' : 'neg';
+                const c = safeNumber(r.c, 0.5);
+                return `<tr>
+                    <td>${r.tf}</td>
+                    <td style="text-align:right" class="${cls}">${formatPct(rv)}</td>
+                    <td style="text-align:right">${formatPrice(safeNumber(r.t,0), assets[currentAsset].decimals)}</td>
+                    <td style="text-align:right"><span class="conf-bar"><span class="conf-fill" style="width:${Math.min(100,c*100)}%"></span></span>${(c*100).toFixed(0)}%</td>
+                </tr>`;
             }).join('');
         }
 
-        // Update meta levels
-        function updateMetaLevels(levels) {
-            const container = document.getElementById('meta-levels');
-            if (!container || !levels) return;
+        function renderDecision() {
+            const an = assetAnalysis[currentAsset] || {};
+            const dec = an.decision || 'HOLD';
+            const inc = an.inc || [];
+            const change = safeNumber(an.change, 0);
+            const vol = safeNumber(an.volatility, 0);
 
-            container.innerHTML = levels.map(l => `
-                <div class="meta-level">
-                    <span class="level-name">${l.name || '--'}</span>
-                    <span class="level-value">${l.value || '--'}</span>
-                </div>
-            `).join('');
-        }
+            const decEl = document.getElementById('decision');
+            const ratEl = document.getElementById('rationale');
+            if (decEl) { decEl.textContent = dec; decEl.className = 'decision-value ' + dec.toLowerCase(); }
 
-        // Update incompleteness indicators
-        function updateIncompleteness(items) {
-            const container = document.getElementById('incompleteness-list');
-            if (!container || !items) return;
-
-            container.innerHTML = items.map(item => `
-                <div class="incompleteness-item">
-                    <span class="incompleteness-indicator ${item.active ? 'active' : 'inactive'}"></span>
-                    <span class="incompleteness-name">${item.name || '--'}</span>
-                    <span class="incompleteness-status" style="color: ${item.active ? '#C72C41' : '#14853D'}">
-                        ${item.active ? 'DETECTED' : 'CLEAR'}
-                    </span>
-                </div>
-            `).join('');
-        }
-
-        // Add log entry with safety (XSS-safe)
-        function addLogEntry(message) {
-            const log = document.getElementById('improvement-log');
-            if (!log) return;
-
-            const now = new Date();
-            const timestamp = now.toTimeString().split(' ')[0];
-
-            const entry = document.createElement('div');
-            entry.className = 'log-entry';
-
-            const timestampSpan = document.createElement('span');
-            timestampSpan.className = 'timestamp';
-            timestampSpan.textContent = `[${timestamp}]`;
-
-            entry.appendChild(timestampSpan);
-            entry.appendChild(document.createTextNode(' ' + message));
-
-            log.appendChild(entry);
-            log.scrollTop = log.scrollHeight;
-
-            // Keep last 50 entries
-            while (log.children.length > 50) {
-                log.removeChild(log.firstChild);
+            let rationale;
+            if (dec === 'ABSTAIN') {
+                const names = inc.map((a,i) => a ? INCOMPLETENESS_NAMES[i] : null).filter(Boolean).join(', ');
+                rationale = `Incompleteness detected: ${names}. System recognizes limits of its predictive framework.`;
+            } else if (dec === 'BUY') {
+                rationale = `Strong momentum (+${change.toFixed(2)}%) with low volatility (${vol.toFixed(2)}%). Convergent bullish signal.`;
+            } else if (dec === 'SELL') {
+                rationale = `Negative momentum (${change.toFixed(2)}%) with low volatility (${vol.toFixed(2)}%). Bearish signal.`;
+            } else {
+                rationale = `Equilibrium. Change ${change.toFixed(2)}%, vol ${vol.toFixed(2)}%. No action threshold reached.`;
             }
+            if (ratEl) ratEl.textContent = rationale;
         }
 
-        // Asset selector - handle clicks on both crypto and metals selectors
-        function handleAssetClick(e) {
-            try {
-                if (e.target.classList.contains('asset-btn')) {
-                    const newAsset = e.target.dataset.asset;
+        function renderMetrics() {
+            const an = assetAnalysis[currentAsset] || {};
+            const hist = priceHistory[currentAsset] || [];
 
-                    // Validate the asset exists
-                    if (!assets[newAsset]) {
-                        console.error('Unknown asset:', newAsset);
-                        return;
-                    }
-
-                    document.querySelectorAll('.asset-btn').forEach(btn => btn.classList.remove('active'));
-                    e.target.classList.add('active');
-                    currentAsset = newAsset;
-                    updateDisplay();
-                    updateChart();
-                    runGodelAnalysis();
-                    addLogEntry(`Switched to ${assets[currentAsset].name} analysis`);
-                }
-            } catch (err) {
-                console.error('Asset click error:', err);
-            }
+            const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+            el('godel-number', generateGodelNumber(hist));
+            el('cycles', ++improvementCycles);
+            el('meta-level', an.change > 0 ? 'L0: BULL' : 'L0: BEAR');
+            el('vol-display', an.volatility != null ? an.volatility.toFixed(2) + '%' : '--');
+            el('rsi-display', an.rsi != null ? an.rsi.toFixed(1) : '--');
+            el('macd-display', an.macdSignal != null ? (an.macdSignal >= 0 ? '+' : '') + an.macdSignal.toFixed(2) : '--');
+            el('loop-count', strangeLoopCount);
+            el('self-ref-depth', Math.floor(3 + Math.random() * 2));
+            el('coherence', (75 + Math.random() * 20).toFixed(1) + '%');
         }
 
-        // Safely attach event listeners
-        const cryptoSelector = document.getElementById('crypto-selector');
-        const metalsSelector = document.getElementById('metals-selector');
-
-        if (cryptoSelector) cryptoSelector.addEventListener('click', handleAssetClick);
-        if (metalsSelector) metalsSelector.addEventListener('click', handleAssetClick);
-
-        // Calculate and display highest 5-minute momentum
-        function updateMomentumBanner() {
-            const fiveMinAgo = Date.now() - (5 * 60 * 1000);
-            let highestMomentum = { asset: null, value: 0 };
-
-            Object.keys(assets).forEach(asset => {
-                // Skip assets still on placeholder data
-                if (allPrices[asset]?.isPlaceholder) return;
-
-                const history = priceHistory[asset];
-                // Need at least 2 real data points for meaningful momentum
-                if (!history || history.length < 2) return;
-
-                // Find price from ~5 minutes ago
-                const recentHistory = history.filter(h => h && h.time >= fiveMinAgo);
-                if (recentHistory.length < 1) return;
-
-                const oldPrice = safeNumber(recentHistory[0].price, 0);
-                const currentPrice = safeNumber(history[history.length - 1].price, 0);
-
-                // Skip if prices are invalid
-                if (oldPrice <= 0 || currentPrice <= 0) return;
-
-                const momentum = ((currentPrice - oldPrice) / oldPrice) * 100;
-
-                // Skip if momentum is invalid or unrealistic (>20% in 5 min is suspicious)
-                if (!isFinite(momentum) || Math.abs(momentum) > 20) return;
-
-                // Prefer highest absolute momentum, with tie-breaker for positive
-                if (Math.abs(momentum) > Math.abs(highestMomentum.value) ||
-                    (Math.abs(momentum) === Math.abs(highestMomentum.value) && momentum > highestMomentum.value)) {
-                    highestMomentum = { asset, value: momentum };
-                }
+        function renderPortfolioBanner() {
+            const allKeys = Object.keys(assets);
+            let totalInc = 0, buyCount = 0, sellCount = 0, holdCount = 0, abstainCount = 0;
+            allKeys.forEach(k => {
+                const an = assetAnalysis[k] || {};
+                if (an.inc) totalInc += an.inc.filter(Boolean).length;
+                if (an.decision === 'BUY') buyCount++;
+                else if (an.decision === 'SELL') sellCount++;
+                else if (an.decision === 'ABSTAIN') abstainCount++;
+                else holdCount++;
             });
 
-            const assetEl = document.getElementById('momentum-asset');
-            const valueEl = document.getElementById('momentum-value');
+            const maxInc = allKeys.length * 7;
+            const score = maxInc > 0 ? ((1 - totalInc / maxInc) * 100).toFixed(0) : '--';
 
-            if (highestMomentum.asset && assetEl && valueEl) {
-                const info = assets[highestMomentum.asset];
-                assetEl.textContent = info.symbol;
-                valueEl.textContent = formatPercent(highestMomentum.value);
-                valueEl.className = 'momentum-value ' + (highestMomentum.value >= 0 ? 'positive' : 'negative');
-            }
+            const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+            el('pb-score', score + '/100');
+            el('pb-incomplete', totalInc + '/' + maxInc);
+            el('pb-loops', strangeLoopCount);
+            el('pb-signals', `${buyCount}B / ${sellCount}S / ${abstainCount}A`);
+
+            // Momentum
+            const fiveMinAgo = Date.now() - 300000;
+            let best = { sym: '--', val: 0 };
+            allKeys.forEach(k => {
+                if (allPrices[k]?.isPlaceholder) return;
+                const h = priceHistory[k];
+                if (!h || h.length < 2) return;
+                const recent = h.filter(p => p && p.time >= fiveMinAgo);
+                if (recent.length < 1) return;
+                const old = safeNumber(recent[0].price, 0);
+                const cur = safeNumber(h[h.length-1].price, 0);
+                if (old <= 0 || cur <= 0) return;
+                const mom = ((cur - old) / old) * 100;
+                if (!isFinite(mom) || Math.abs(mom) > 20) return;
+                if (Math.abs(mom) > Math.abs(best.val)) best = { sym: assets[k].symbol, val: mom };
+            });
+            el('pb-momentum', best.sym + ' ' + formatPct(best.val));
         }
 
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            updateChart();
-        });
+        // ========== RENDER ALL ==========
+        function renderAll() {
+            // Analyze all assets
+            Object.keys(assets).forEach(k => {
+                const result = analyzeAsset(k);
+                if (result) assetAnalysis[k] = result;
+            });
 
-        // Initialize
-        addLogEntry('Gödel Machine initializing...');
-        addLogEntry('Connecting to CoinGecko API...');
-        fetchPrices();
+            renderAssetGrid();
+            renderHeatMap();
+            renderReturns();
+            renderDecision();
+            renderMetrics();
+            renderPortfolioBanner();
 
-        // Refresh every 30 seconds
-        setInterval(fetchPrices, 30000);
+            const an = assetAnalysis[currentAsset];
+            if (an) drawRadar(an.inc || []);
+            drawLoopSpiral();
+        }
 
+        // ========== LOG ==========
+        function addLogEntry(msg) {
+            const log = document.getElementById('improvement-log');
+            if (!log) return;
+            const ts = new Date().toTimeString().split(' ')[0];
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const span = document.createElement('span');
+            span.className = 'ts';
+            span.textContent = `[${ts}]`;
+            entry.appendChild(span);
+            entry.appendChild(document.createTextNode(' ' + msg));
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+            while (log.children.length > 50) log.removeChild(log.firstChild);
+        }
+
+        // ========== MAIN LOOP ==========
+        async function fetchAndRender() {
+            try {
+                await Promise.all([
+                    fetchCryptoPrices().catch(e => addLogEntry('Crypto API error')),
+                    fetchMetalPrices().catch(e => addLogEntry('Metal API error'))
+                ]);
+            } catch(e) {}
+            renderAll();
+        }
+
+        // Animate spiral continuously
+        setInterval(drawLoopSpiral, 50);
+
+        // Init
+        addLogEntry('Gödel Machine v2.0 initializing...');
+        fetchAndRender();
+        setInterval(fetchAndRender, 30000);
         addLogEntry('Self-referential analysis framework active');
     </script>
 </body>
