@@ -3,6 +3,10 @@
 Zero-Cost Trading Orchestrator
 Manages entire pipeline: data → analysis → decision → execution
 All local, all free, all private
+
+Enhanced with optional agent integration:
+- EnsembleTrader: Multi-perspective consensus voting
+- GodelMachine: Meta-cognitive incompleteness detection
 """
 
 import json
@@ -10,6 +14,7 @@ import time
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Optional, Dict, Any
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -18,9 +23,36 @@ from scraper_config import ZeroCostScraper
 from prompt_compression import TradingPromptCompressor
 from client import QwenClient
 
+# Optional agent imports
+try:
+    from ensemble_trading import EnsembleTrader
+    ENSEMBLE_AVAILABLE = True
+except ImportError:
+    ENSEMBLE_AVAILABLE = False
+
+try:
+    from godel_machine import GodelMachine
+    GODEL_AVAILABLE = True
+except ImportError:
+    GODEL_AVAILABLE = False
+
 
 class TradingOrchestrator:
-    def __init__(self, config_path="./trading_config.json"):
+    """
+    Zero-Cost Trading Orchestrator with optional agent integration.
+
+    Modes:
+    - basic: Original LLM-only mode
+    - ensemble: Add consensus voting (improves accuracy)
+    - godel: Add meta-cognitive analysis (detects unknowable states)
+    - full: All agents integrated
+    """
+
+    VERSION = "2.0.0"
+
+    def __init__(self, config_path="./trading_config.json", mode="basic"):
+        self.mode = mode
+
         # Load config if exists, otherwise use defaults
         if Path(config_path).exists():
             self.config = json.loads(Path(config_path).read_text())
@@ -30,12 +62,28 @@ class TradingOrchestrator:
                 "symbols": ["BTCUSDT", "ETHUSDT"],
                 "interval": "1h",
                 "max_position_size": 1000,
-                "stop_loss_pct": 2.0
+                "stop_loss_pct": 2.0,
+                "mode": mode
             }
 
         self.scraper = ZeroCostScraper()
         self.compressor = TradingPromptCompressor()
         self.llm = QwenClient()
+
+        # Initialize optional agents based on mode
+        self.ensemble: Optional[EnsembleTrader] = None
+        self.godel: Optional[GodelMachine] = None
+
+        if mode in ["ensemble", "full"] and ENSEMBLE_AVAILABLE:
+            self.ensemble = EnsembleTrader(self.llm, num_models=5)
+            print(f"[AGENT] EnsembleTrader initialized")
+
+        if mode in ["godel", "full"] and GODEL_AVAILABLE:
+            self.godel = GodelMachine(
+                name="OrchestratorGodel",
+                enable_self_improvement=True
+            )
+            print(f"[AGENT] GodelMachine initialized")
 
         # Trading state
         self.state = {
@@ -49,15 +97,29 @@ class TradingOrchestrator:
             "queries_per_minute": 0,
             "avg_latency_ms": 0,
             "tokens_generated": 0,
-            "total_queries": 0
+            "total_queries": 0,
+            "abstentions": 0,
+            "ensemble_agreements": 0
         }
 
+        print(f"[ORCHESTRATOR] Mode: {mode.upper()} | Agents: {self._get_agents()}")
+
+    def _get_agents(self) -> str:
+        """Get list of active agents"""
+        agents = ["LLM"]
+        if self.ensemble:
+            agents.append("Ensemble")
+        if self.godel:
+            agents.append("Godel")
+        return " + ".join(agents)
+
     def pipeline(self, symbol, interval="1h"):
-        """Single analysis pipeline iteration"""
+        """Single analysis pipeline iteration with optional agent integration"""
         start = time.time()
 
         print(f"\n{'='*60}")
         print(f"🔄 Pipeline Execution: {symbol} @ {datetime.now()}")
+        print(f"   Mode: {self.mode.upper()} | Agents: {self._get_agents()}")
         print(f"{'='*60}")
 
         # 1. Data acquisition (zero-cost)
@@ -93,8 +155,63 @@ class TradingOrchestrator:
         print("🎯 Step 5: Decision Parsing...")
         decision = self.parse_llm_output(analysis)
 
-        print(f"✅ Decision: {decision['action'].upper()}")
+        print(f"✅ Basic Decision: {decision['action'].upper()}")
         print(f"   Confidence: {decision.get('confidence', 0)}/10")
+
+        # 5a. Ensemble consensus (if enabled)
+        if self.ensemble:
+            print("🗳️  Step 5a: Ensemble Consensus...")
+            data_str = " ".join([f"c:{c['c']:.0f} v:{c['v']:.0f}" for c in compressed[-5:]])
+            ensemble_result = self.ensemble.ensemble_predict(symbol, data_str)
+
+            print(f"   Ensemble: {ensemble_result['consensus_action'].upper()} "
+                  f"({ensemble_result['consensus_votes']}/{ensemble_result['total_models']} votes)")
+
+            # Override decision if strong consensus
+            if ensemble_result['consensus_votes'] >= 4:
+                decision['action'] = ensemble_result['consensus_action']
+                decision['confidence'] = ensemble_result['avg_confidence']
+                decision['ensemble_votes'] = ensemble_result['consensus_votes']
+
+                if ensemble_result['diversity_score'] == 1:
+                    self.perf['ensemble_agreements'] += 1
+
+        # 5b. Godel meta-cognitive analysis (if enabled)
+        if self.godel:
+            print("🔮 Step 5b: Godel Meta-Cognitive Analysis...")
+            price = indicators.get('current_price', 0)
+
+            market_data = {
+                "price": price,
+                "prev_price": indicators.get('prev_price', price),
+                "volume": indicators.get('volume', 0),
+                "rsi": indicators.get('rsi', 50),
+                "macd": indicators.get('macd', 0),
+                "momentum": indicators.get('momentum', 0),
+                "trend": 1 if price > indicators.get('sma_20', price) else -1
+            }
+
+            godel_decision = self.godel.process_market_state(market_data)
+
+            print(f"   Godel: {godel_decision.action.upper()} "
+                  f"(meta-confidence: {godel_decision.meta_confidence:.0%})")
+
+            if godel_decision.incompleteness_detected:
+                print(f"   ⚠️  INCOMPLETENESS: {godel_decision.incompleteness_type.name}")
+
+            # Handle abstention
+            if godel_decision.action == "abstain":
+                decision['action'] = "hold"
+                decision['confidence'] = 0
+                decision['reason'] = f"ABSTAIN: {godel_decision.reasoning[:100]}"
+                decision['incompleteness'] = True
+                self.perf['abstentions'] += 1
+            else:
+                # Weight confidence by meta-confidence
+                decision['meta_confidence'] = godel_decision.meta_confidence
+                decision['godel_number'] = godel_decision.godel_number
+
+        print(f"✅ Final Decision: {decision['action'].upper()}")
         print(f"   Reason: {decision.get('reason', 'N/A')[:100]}")
 
         # 6. Execution (if enabled)
@@ -256,10 +373,18 @@ if __name__ == "__main__":
     parser.add_argument("--interval", default="1h", help="Candle interval")
     parser.add_argument("--continuous", action="store_true", help="Run continuously")
     parser.add_argument("--sleep", type=int, default=300, help="Sleep between iterations (seconds)")
+    parser.add_argument("--mode", default="basic",
+                        choices=["basic", "ensemble", "godel", "full"],
+                        help="Trading mode: basic, ensemble, godel, or full")
 
     args = parser.parse_args()
 
-    orchestrator = TradingOrchestrator()
+    print(f"\n{'='*60}")
+    print(f"TRADING ORCHESTRATOR v2.0")
+    print(f"Mode: {args.mode.upper()}")
+    print(f"{'='*60}\n")
+
+    orchestrator = TradingOrchestrator(mode=args.mode)
 
     if args.continuous:
         orchestrator.run_continuous(interval_seconds=args.sleep)

@@ -1,0 +1,94 @@
+{
+  "version": "2.0.0",
+  "description": "Integrated Trading System Agent Configuration",
+
+  "mode": "full",
+  "modes": {
+    "basic": {
+      "description": "LLM-only analysis - fastest, simplest",
+      "agents": ["scraper", "compressor", "llm"]
+    },
+    "ensemble": {
+      "description": "Multi-perspective consensus voting - better accuracy",
+      "agents": ["scraper", "compressor", "llm", "ensemble"]
+    },
+    "godel": {
+      "description": "Meta-cognitive analysis - detects unknowable states",
+      "agents": ["scraper", "compressor", "llm", "godel"]
+    },
+    "full": {
+      "description": "All agents integrated - maximum intelligence",
+      "agents": ["scraper", "compressor", "llm", "ensemble", "godel"]
+    }
+  },
+
+  "trading": {
+    "paper_trading": true,
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "interval": "1h",
+    "max_position_size": 1000,
+    "stop_loss_pct": 2.0
+  },
+
+  "agents": {
+    "ensemble": {
+      "enabled": true,
+      "num_models": 5,
+      "personalities": [
+        "aggressive day trader",
+        "conservative swing trader",
+        "quantitative analyst",
+        "momentum trader",
+        "contrarian investor"
+      ],
+      "min_consensus_votes": 4,
+      "description": "Runs 5 parallel LLM queries with different trading personas"
+    },
+
+    "godel": {
+      "enabled": true,
+      "enable_self_improvement": true,
+      "max_meta_depth": 3,
+      "incompleteness_sensitivity": 0.7,
+      "components": {
+        "incompleteness_detector": {
+          "enabled": true,
+          "types": [
+            "SELF_REFERENCE_PARADOX",
+            "MEASUREMENT_COLLAPSE",
+            "REFLEXIVE_PREDICTION",
+            "INFORMATION_HORIZON",
+            "EMERGENT_CHAOS",
+            "DECIDABILITY_BOUNDARY",
+            "META_UNCERTAINTY"
+          ]
+        },
+        "meta_predictor": {
+          "enabled": true,
+          "max_recursion": 3
+        },
+        "introspection_engine": {
+          "enabled": true,
+          "depth": 2
+        },
+        "self_improver": {
+          "enabled": true,
+          "improvement_interval": 10
+        }
+      },
+      "description": "Meta-cognitive self-referential analysis inspired by Godel's incompleteness theorems"
+    }
+  },
+
+  "performance": {
+    "target_latency_ms": 2000,
+    "max_abstention_rate": 0.3,
+    "min_confidence_threshold": 0.5
+  },
+
+  "logging": {
+    "trades_file": "integrated_trades.jsonl",
+    "decisions_file": "decisions.jsonl",
+    "verbose": true
+  }
+}
