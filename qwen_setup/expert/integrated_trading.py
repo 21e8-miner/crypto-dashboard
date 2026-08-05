@@ -44,6 +44,7 @@ except Exception:
 # Agent imports
 from ensemble_trading import EnsembleTrader
 from godel_machine import GodelMachine, GodelDecision
+from prediction_tracker import PredictionTracker
 
 
 class TradingMode(Enum):
@@ -126,7 +127,7 @@ class IntegratedTradingSystem:
     - FULL: All agents working together
     """
 
-    VERSION = "2.0.0-integrated"
+    VERSION = "3.1.0-verified"
 
     def __init__(
         self,
@@ -188,10 +189,18 @@ class IntegratedTradingSystem:
             "godel_loops_detected": 0
         }
 
+        # Closed-loop prediction verification (measured hit rate, not theater)
+        self.tracker = PredictionTracker(
+            path=Path("prediction_ledger.jsonl"),
+            horizon_s=float(self.config.get("prediction_horizon_s", 300)),
+            deadband_pct=float(self.config.get("prediction_deadband_pct", 0.05)),
+        )
+
         print(f"\n{'='*60}")
         print(f"INTEGRATED TRADING SYSTEM v{self.VERSION}")
         print(f"Mode: {mode.value.upper()}")
         print(f"Agents: {self._get_active_agents()}")
+        print(f"Prediction ledger: {self.tracker.path}")
         print(f"{'='*60}\n")
 
     def _get_active_agents(self) -> str:
@@ -303,15 +312,33 @@ class IntegratedTradingSystem:
         self.decision_history.append(final_decision)
         self.perf['total_queries'] += 1
 
+        # Resolve any matured prior calls using current prices, then record this call
+        resolved = self.tracker.resolve({symbol: price, symbol.replace("USDT", ""): price})
+        if resolved:
+            n_hit = sum(1 for p in resolved if p.hit is True)
+            n_miss = sum(1 for p in resolved if p.hit is False)
+            print(f"      Verified {len(resolved)} call(s): {n_hit} hit / {n_miss} miss")
+
+        if final_decision.action.lower() in ("buy", "sell") and price > 0:
+            self.tracker.record(
+                symbol=symbol,
+                side=final_decision.action.lower(),
+                price=price,
+                confidence=final_decision.confidence,
+                reason=final_decision.reason or "",
+            )
+
         latency = (time.time() - start_time) * 1000
         self.perf['avg_latency_ms'] = (
             (self.perf['avg_latency_ms'] * (self.perf['total_queries'] - 1) + latency) /
             self.perf['total_queries']
         )
 
+        verified = self.tracker.summary()
         print(f"\n{'─'*60}")
         print(f"FINAL DECISION: {final_decision.action.upper()}")
         print(f"Confidence: {final_decision.confidence:.0%} | Latency: {latency:.0f}ms")
+        print(f"Verified accuracy: {verified['badge']}")
         if final_decision.philosophical_note:
             print(f"Note: {final_decision.philosophical_note[:80]}...")
         print(f"{'─'*60}")
@@ -537,6 +564,17 @@ A:"""
         print(f"Abstentions (Incompleteness): {self.perf['abstentions']}")
         print(f"Ensemble Perfect Agreements: {self.perf['ensemble_agreements']}")
         print(f"Strange Loops Detected: {self.perf['godel_loops_detected']}")
+
+        verified = self.tracker.summary()
+        print(f"\nVerified predictions (closed loop):")
+        print(f"  Badge: {verified['badge']}")
+        print(f"  Graded: {verified['graded']}  Hits: {verified['hits']}  Misses: {verified['misses']}")
+        print(f"  Pending: {verified['pending']}  Dropped: {verified['dropped']}")
+        if verified.get("avg_confidence_hits") is not None:
+            print(
+                f"  Avg conf hits: {verified['avg_confidence_hits']:.2f}  "
+                f"misses: {verified.get('avg_confidence_misses')}"
+            )
 
         if self.godel:
             print(f"\nGodel Machine Status:")

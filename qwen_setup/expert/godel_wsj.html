@@ -265,8 +265,15 @@
         .ensemble-bar .bear { background: var(--wsj-red); }
         .ensemble-bar .neutral { background: var(--wsj-gray-light); }
 
-        /* Accuracy Badge */
-        .accuracy-badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: var(--wsj-blue-light); color: var(--wsj-blue); font-weight: 600; margin-left: 6px; }
+        /* Accuracy Badge — measured hit rate only */
+        .accuracy-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: var(--wsj-blue-light); color: var(--wsj-blue); font-weight: 600; margin-left: 6px; }
+        .accuracy-badge.measuring { background: #f0f0f0; color: var(--wsj-gray-mid); }
+        .accuracy-badge.good { background: #e6f4ea; color: var(--wsj-green); }
+        .accuracy-badge.bad { background: #fce8e6; color: var(--wsj-red); }
+        .scorecard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 12px; }
+        .scorecard .sc-item .sc-label { color: var(--wsj-gray-mid); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .scorecard .sc-item .sc-val { font-family: 'Libre Baskerville', Georgia, serif; font-size: 18px; font-weight: 700; margin-top: 2px; }
+        .scorecard .sc-note { grid-column: 1 / -1; color: var(--wsj-gray-mid); font-size: 11px; line-height: 1.4; font-style: italic; }
 
         /* Footer */
         .footer { text-align: center; padding: 16px; font-size: 11px; color: var(--wsj-gray-mid); border-top: 1px solid var(--wsj-gray-border); margin-top: 24px; }
@@ -281,7 +288,7 @@
         <div class="logo">Gödel<span>Machine</span></div>
         <div class="header-right">
             <span id="data-freshness" class="freshness fresh">LIVE</span>
-            <span class="accuracy-badge" id="accuracy-badge">~75%</span>
+            <span class="accuracy-badge measuring" id="accuracy-badge" title="Measured hit rate after 10 scored calls">measuring</span>
             <span><span class="status-dot"></span><span id="current-time">--</span></span>
         </div>
     </header>
@@ -336,11 +343,23 @@
             <!-- Column 3: Returns + Loop -->
             <div>
                 <div class="card">
-                    <div class="card-title">Forward Expected Returns</div>
+                    <div class="card-title">Momentum Projection <span style="font-weight:400;color:var(--wsj-gray-mid);font-size:11px">(deterministic · not a forecast guarantee)</span></div>
                     <table class="returns-table">
-                        <thead><tr><th>Period</th><th style="text-align:right">Return</th><th style="text-align:right">Target</th><th style="text-align:right">Conf</th></tr></thead>
+                        <thead><tr><th>Horizon</th><th style="text-align:right">Proj</th><th style="text-align:right">±Band</th><th style="text-align:right">Target</th></tr></thead>
                         <tbody id="returns-body"></tbody>
                     </table>
+                </div>
+                <div class="card" style="margin-top: 12px;">
+                    <div class="card-title">Prediction Scorecard</div>
+                    <div class="scorecard" id="scorecard">
+                        <div class="sc-item"><div class="sc-label">Hit rate</div><div class="sc-val" id="sc-hit">measuring</div></div>
+                        <div class="sc-item"><div class="sc-label">Record</div><div class="sc-val" id="sc-record">0–0</div></div>
+                        <div class="sc-item"><div class="sc-label">Pending</div><div class="sc-val" id="sc-pending">0</div></div>
+                        <div class="sc-item"><div class="sc-label">Graded</div><div class="sc-val" id="sc-graded">0</div></div>
+                        <div class="sc-item"><div class="sc-label">Conf on hits</div><div class="sc-val" id="sc-conf-hit">—</div></div>
+                        <div class="sc-item"><div class="sc-label">Conf on misses</div><div class="sc-val" id="sc-conf-miss">—</div></div>
+                        <div class="sc-note" id="sc-note">Directional BUY/SELL calls are scored vs the realized 5-minute move (±0.05% deadband). No self-reported accuracy.</div>
+                    </div>
                 </div>
                 <div class="card" style="margin-top: 12px;">
                     <div class="card-title">Strange Loop Detector</div>
@@ -378,7 +397,7 @@
     </main>
 
     <footer class="footer">
-        Gödel Machine v3.0 | Ensemble: RSI-14 + MACD(12,26,9) + Bollinger(20,2σ) + Momentum | 15s Refresh | Rate-Limit Backoff | Gas-Aware | Crypto: CoinGecko | Metals: Multi-API Rotation
+        Gödel Machine v3.1 · verified predictions | Ensemble: RSI-14 + MACD(12,26,9) + Bollinger(20,2σ) + Momentum | 15s Refresh | Rate-Limit Backoff | Gas-Aware | Crypto: CoinGecko | Metals: Multi-API Rotation
     </footer>
 
     <script>
@@ -407,8 +426,28 @@
         let metalPreviousPrices = { gold: null, silver: null };
         let metalApiIndex = 0;
         let strangeLoopCount = 0;
-        let previousPredictions = {};
+        let previousPredictions = {}; // { asset: { pred, t } }
         let improvementCycles = 0;
+        let dataRefreshCount = 0;
+
+        // Closed-loop prediction ledger (localStorage)
+        const LEDGER_KEY = 'godel_pred_ledger_v31';
+        const PRED_HORIZON_MS = 5 * 60 * 1000;
+        const PRED_DEADBAND = 0.05; // percent
+        const PRED_MAX_AGE_MS = PRED_HORIZON_MS * 3;
+        const PRED_MIN_N = 10;
+        let predictionLedger = [];
+        try {
+            predictionLedger = JSON.parse(localStorage.getItem(LEDGER_KEY) || '[]');
+            if (!Array.isArray(predictionLedger)) predictionLedger = [];
+        } catch (_) { predictionLedger = []; }
+        function saveLedger() {
+            try {
+                // keep last 500 entries
+                if (predictionLedger.length > 500) predictionLedger = predictionLedger.slice(-500);
+                localStorage.setItem(LEDGER_KEY, JSON.stringify(predictionLedger));
+            } catch (_) {}
+        }
 
         // Data freshness tracking
         let lastFetchTime = Date.now();
@@ -460,19 +499,19 @@
                 }
             },
             {
-                name: 'Metals.live',
+                name: 'CoinGecko-Kinesis-Silver',
                 fetch: async () => {
-                    const resp = await fetch('https://api.metals.live/v1/spot');
+                    const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=kinesis-silver,pax-gold&vs_currencies=usd&include_24hr_change=true');
                     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                     const data = await resp.json();
-                    if (Array.isArray(data) && data.length > 0) {
-                        const s = data[0];
-                        return {
-                            gold: s.gold ? { price: parseFloat(s.gold), change: null } : null,
-                            silver: s.silver ? { price: parseFloat(s.silver), change: null } : null
-                        };
-                    }
-                    throw new Error('Invalid metals.live');
+                    const silver = data['kinesis-silver']?.usd
+                        ? { price: data['kinesis-silver'].usd, change: data['kinesis-silver'].usd_24h_change || 0 }
+                        : null;
+                    const gold = data['pax-gold']?.usd
+                        ? { price: data['pax-gold'].usd, change: data['pax-gold'].usd_24h_change || 0 }
+                        : null;
+                    if (!silver && !gold) throw new Error('No kinesis/pax data');
+                    return { gold, silver };
                 }
             },
             {
@@ -491,20 +530,6 @@
                     throw new Error('No goldprice data');
                 }
             },
-            {
-                name: 'FX-Rates-XAU',
-                fetch: async () => {
-                    const resp = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=XAU,XAG');
-                    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                    const data = await resp.json();
-                    if (data.rates) {
-                        const gp = data.rates.XAU ? 1 / data.rates.XAU : null;
-                        const sp = data.rates.XAG ? 1 / data.rates.XAG : null;
-                        return { gold: gp ? { price: gp, change: null } : null, silver: sp ? { price: sp, change: null } : null };
-                    }
-                    throw new Error('No FX rates');
-                }
-            }
         ];
 
         // ========== HELPERS ==========
@@ -921,13 +946,19 @@
                 decisionConfidence = 0.4;
             }
 
-            // Strange loop detection
+            // Strange loop detection — rolling 30-minute window only
             const pred = ensemble.signal;
-            if (previousPredictions[assetKey] && previousPredictions[assetKey] !== pred && pred !== 'NEUTRAL') {
-                strangeLoopCount++;
-                addLogEntry(`Loop: ${assets[assetKey].symbol} ${previousPredictions[assetKey]} → ${pred}`);
+            const nowL = Date.now();
+            const prev = previousPredictions[assetKey];
+            if (prev && prev.pred && prev.pred !== pred && pred !== 'NEUTRAL' && (nowL - prev.t) < 30 * 60 * 1000) {
+                // count only flips inside the window; recompute window total below
+                previousPredictions[assetKey] = { pred, t: nowL, flipped: true, flipT: nowL };
+                addLogEntry(`Loop: ${assets[assetKey].symbol} ${prev.pred} → ${pred}`);
+            } else if (pred !== 'NEUTRAL') {
+                previousPredictions[assetKey] = { pred, t: nowL, flipped: prev?.flipped || false, flipT: prev?.flipT || 0 };
             }
-            if (pred !== 'NEUTRAL') previousPredictions[assetKey] = pred;
+            // recompute strangeLoopCount over last 30m
+            strangeLoopCount = Object.values(previousPredictions).filter(p => p && p.flipped && p.flipT && (nowL - p.flipT) < 30 * 60 * 1000).length;
 
             return {
                 price, change, volatility,
@@ -956,17 +987,31 @@
             } catch(e) { return '--'; }
         }
 
-        // ========== EXPECTED RETURNS ==========
-        function calcReturns(price, change, vol) {
-            const hv = vol / Math.sqrt(24);
-            const m = change / 24;
-            return [
-                { tf: '1H', r: m*1.2+(Math.random()-0.5)*hv, c: 0.75-vol*0.1 },
-                { tf: '4H', r: m*3.5+(Math.random()-0.5)*hv*2, c: 0.65-vol*0.1 },
-                { tf: '24H', r: change*0.8+(Math.random()-0.5)*vol, c: 0.55-vol*0.1 },
-                { tf: '7D', r: change*2.5+(Math.random()-0.5)*vol*3, c: 0.40-vol*0.1 },
-                { tf: '30D', r: change*5+(Math.random()-0.5)*vol*5, c: 0.25-vol*0.1 }
-            ].map(x => ({ ...x, c: Math.max(0.1, Math.min(0.95, x.c)), t: price*(1+x.r/100) }));
+        // ========== MOMENTUM PROJECTION (deterministic — not a scored forecast) ==========
+        function calcMomentumProjection(price, change, vol) {
+            // Linear extrapolation of observed 24h change rate, bands = vol-scaled.
+            // No randomness. Labels as projection, not expected return.
+            const hourly = change / 24;
+            const hv = Math.max(0.01, vol);
+            const rows = [
+                { tf: '1H', hours: 1, confDecay: 0.85 },
+                { tf: '4H', hours: 4, confDecay: 0.7 },
+                { tf: '24H', hours: 24, confDecay: 0.55 },
+                { tf: '7D', hours: 24 * 7, confDecay: 0.35 },
+                { tf: '30D', hours: 24 * 30, confDecay: 0.2 }
+            ];
+            return rows.map(row => {
+                const r = hourly * row.hours;
+                // band grows with sqrt(time) * tick-vol scale
+                const band = hv * Math.sqrt(Math.max(1, row.hours / 4));
+                return {
+                    tf: row.tf,
+                    r,
+                    band,
+                    t: price * (1 + r / 100),
+                    c: Math.max(0.1, Math.min(0.9, row.confDecay))
+                };
+            });
         }
 
         // ========== DRAW SPARKLINE ==========
@@ -1204,16 +1249,16 @@
             if (!body) return;
             const an = assetAnalysis[currentAsset];
             if (!an || !an.price) { body.innerHTML = '<tr><td colspan="4">--</td></tr>'; return; }
-            const rets = calcReturns(an.price, an.change, an.volatility);
+            const rets = calcMomentumProjection(an.price, an.change, an.volatility);
             body.innerHTML = rets.map(r => {
                 const rv = safeNumber(r.r, 0);
+                const band = safeNumber(r.band, 0);
                 const cls = rv >= 0 ? 'pos' : 'neg';
-                const c = safeNumber(r.c, 0.5);
                 return `<tr>
                     <td>${r.tf}</td>
                     <td style="text-align:right" class="${cls}">${formatPct(rv)}</td>
+                    <td style="text-align:right">±${band.toFixed(2)}%</td>
                     <td style="text-align:right">${formatPrice(safeNumber(r.t,0), assets[currentAsset].decimals)}</td>
-                    <td style="text-align:right"><span class="conf-bar"><span class="conf-fill" style="width:${Math.min(100,c*100)}%"></span></span>${(c*100).toFixed(0)}%</td>
                 </tr>`;
             }).join('');
         }
@@ -1266,18 +1311,23 @@
 
             const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
             el('godel-number', generateGodelNumber(hist));
-            el('cycles', ++improvementCycles);
+            el('cycles', dataRefreshCount);
             el('meta-level', an.pred || 'NEUTRAL');
             el('vol-display', an.volatility != null ? an.volatility.toFixed(2) + '%' : '--');
             el('rsi-display', an.rsi != null ? an.rsi.toFixed(1) : '--');
-            el('macd-display', an.macdSignal != null ? (an.macdSignal >= 0 ? '+' : '') + an.macdSignal.toFixed(3) : '--');
+            // MACD histogram as % of price (cross-asset comparable)
+            if (an.macdSignal != null && an.price > 0) {
+                const pct = (an.macdSignal / an.price) * 100;
+                el('macd-display', (pct >= 0 ? '+' : '') + pct.toFixed(3) + '%');
+            } else {
+                el('macd-display', '--');
+            }
             el('loop-count', strangeLoopCount);
 
-            // Calculate coherence from ensemble agreement
+            // Coherence from ensemble agreement
             const conf = an.decisionConfidence || 0.5;
             el('coherence', (conf * 100).toFixed(1) + '%');
 
-            // Self-ref depth based on history length
             const depth = Math.min(5, Math.floor(hist.length / 20) + 1);
             el('self-ref-depth', `L${depth}`);
         }
@@ -1306,9 +1356,8 @@
             el('pb-loops', strangeLoopCount);
             el('pb-signals', `${buyCount}B / ${sellCount}S / ${abstainCount}A`);
 
-            // Update accuracy badge
-            const accBadge = document.getElementById('accuracy-badge');
-            if (accBadge) accBadge.textContent = `~${Math.min(95, 60 + avgConfidence * 0.35).toFixed(0)}%`;
+            // Accuracy badge = measured hit rate only (see updateScorecard)
+            updateScorecard();
 
             // Momentum
             const fiveMinAgo = Date.now() - 300000;
@@ -1385,12 +1434,126 @@
             }
         }
 
+
+        // ========== PREDICTION LEDGER (closed loop) ==========
+        function recordPrediction(assetKey, an) {
+            if (!an || !an.price) return;
+            const dec = (an.decision || '').toUpperCase();
+            if (dec !== 'BUY' && dec !== 'SELL') return;
+            if (allPrices[assetKey]?.isPlaceholder) return;
+            // de-dupe: only one open call per asset
+            const open = predictionLedger.find(p => p.asset === assetKey && !p.resolved && !p.dropped);
+            if (open) return;
+            predictionLedger.push({
+                id: assetKey + '_' + Date.now(),
+                asset: assetKey,
+                symbol: assets[assetKey].symbol,
+                side: dec === 'BUY' ? 'buy' : 'sell',
+                price: an.price,
+                confidence: an.decisionConfidence || 0.5,
+                tOpen: Date.now(),
+                horizonMs: PRED_HORIZON_MS,
+                resolved: false,
+                dropped: false,
+                hit: null,
+                retPct: null,
+                exitPrice: null
+            });
+            saveLedger();
+        }
+
+        function resolvePredictions() {
+            const now = Date.now();
+            let dirty = false;
+            predictionLedger.forEach(p => {
+                if (p.resolved || p.dropped) return;
+                const age = now - p.tOpen;
+                const px = allPrices[p.asset]?.price;
+                if (age < p.horizonMs) return;
+                if (px == null || px <= 0 || allPrices[p.asset]?.isPlaceholder) {
+                    if (age > PRED_MAX_AGE_MS) {
+                        p.dropped = true; p.resolved = true; p.dropReason = 'stale_no_price';
+                        dirty = true;
+                    }
+                    return;
+                }
+                if (age > PRED_MAX_AGE_MS) {
+                    p.dropped = true; p.resolved = true; p.dropReason = 'stale';
+                    p.exitPrice = px; dirty = true;
+                    return;
+                }
+                const ret = (px / p.price - 1) * 100;
+                p.retPct = ret;
+                p.exitPrice = px;
+                p.resolved = true;
+                if (Math.abs(ret) < PRED_DEADBAND) p.hit = null;
+                else if (p.side === 'buy') p.hit = ret > 0;
+                else p.hit = ret < 0;
+                dirty = true;
+                if (p.hit === true) addLogEntry(`HIT ${p.symbol} ${p.side.toUpperCase()} ${ret.toFixed(3)}%`);
+                else if (p.hit === false) addLogEntry(`MISS ${p.symbol} ${p.side.toUpperCase()} ${ret.toFixed(3)}%`);
+            });
+            if (dirty) saveLedger();
+        }
+
+        function ledgerSummary() {
+            const graded = predictionLedger.filter(p => p.resolved && !p.dropped && p.hit !== null);
+            const pending = predictionLedger.filter(p => !p.resolved && !p.dropped);
+            const hits = graded.filter(p => p.hit === true);
+            const misses = graded.filter(p => p.hit === false);
+            const n = graded.length;
+            const hitRate = n ? hits.length / n : null;
+            const confHit = hits.length ? hits.reduce((a,p)=>a+p.confidence,0)/hits.length : null;
+            const confMiss = misses.length ? misses.reduce((a,p)=>a+p.confidence,0)/misses.length : null;
+            return {
+                graded: n, hits: hits.length, misses: misses.length, pending: pending.length,
+                hitRate, confHit, confMiss,
+                badge: (hitRate != null && n >= PRED_MIN_N)
+                    ? `${(hitRate*100).toFixed(0)}% hit (n=${n})`
+                    : 'measuring'
+            };
+        }
+
+        function updateScorecard() {
+            const s = ledgerSummary();
+            const accBadge = document.getElementById('accuracy-badge');
+            if (accBadge) {
+                accBadge.textContent = s.badge;
+                accBadge.className = 'accuracy-badge';
+                if (s.badge === 'measuring') accBadge.classList.add('measuring');
+                else if (s.hitRate != null && s.hitRate >= 0.55) accBadge.classList.add('good');
+                else if (s.hitRate != null && s.hitRate < 0.45) accBadge.classList.add('bad');
+            }
+            const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+            el('sc-hit', s.hitRate != null ? `${(s.hitRate*100).toFixed(0)}%` : 'measuring');
+            el('sc-record', `${s.hits}–${s.misses}`);
+            el('sc-pending', String(s.pending));
+            el('sc-graded', String(s.graded));
+            el('sc-conf-hit', s.confHit != null ? `${(s.confHit*100).toFixed(0)}%` : '—');
+            el('sc-conf-miss', s.confMiss != null ? `${(s.confMiss*100).toFixed(0)}%` : '—');
+            const note = document.getElementById('sc-note');
+            if (note) {
+                if (s.graded < PRED_MIN_N) {
+                    note.textContent = `Measuring… need ${PRED_MIN_N} graded calls (have ${s.graded}). BUY/SELL vs 5-min realized move; ±${PRED_DEADBAND}% deadband.`;
+                } else if (s.confHit != null && s.confMiss != null && Math.abs(s.confHit - s.confMiss) < 0.05) {
+                    note.textContent = `Hit rate ${(s.hitRate*100).toFixed(0)}% (n=${s.graded}). Confidence on hits ≈ misses — confidence is poorly calibrated.`;
+                } else {
+                    note.textContent = `Hit rate ${(s.hitRate*100).toFixed(0)}% over ${s.graded} graded calls. Coin-flip baseline ≈ 50%.`;
+                }
+            }
+        }
+
         // ========== RENDER ALL ==========
         function renderAll() {
             // Analyze all assets
             Object.keys(assets).forEach(k => {
                 const result = analyzeAsset(k);
                 if (result) assetAnalysis[k] = result;
+            });
+
+            resolvePredictions();
+            Object.keys(assets).forEach(k => {
+                if (assetAnalysis[k]) recordPrediction(k, assetAnalysis[k]);
             });
 
             renderAssetGrid();
@@ -1431,6 +1594,8 @@
                     fetchCryptoPrices().catch(e => addLogEntry('Crypto API error')),
                     fetchMetalPrices().catch(e => addLogEntry('Metal API error'))
                 ]);
+                dataRefreshCount++;
+                improvementCycles = dataRefreshCount;
             } catch(e) {}
             renderAll();
         }
@@ -1442,12 +1607,14 @@
         setInterval(renderDataFreshness, 1000);
 
         // Init
-        addLogEntry('Gödel Machine v3.0 initializing...');
+        addLogEntry('Gödel Machine v3.1 initializing — closed-loop verification enabled...');
         addLogEntry('Ensemble signals: RSI-14, MACD(12,26,9), Bollinger(20,2), ROC-10');
         fetchAndRender();
         setInterval(fetchAndRender, 15000); // Reduced from 30s to 15s
         addLogEntry('Self-referential analysis framework active');
         addLogEntry('Gas cost awareness enabled');
+        addLogEntry('Prediction ledger: 5-min horizon, ±0.05% deadband, localStorage');
+        updateScorecard();
     </script>
 </body>
 </html>
