@@ -117,6 +117,7 @@
         .asset-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .asset-symbol { font-family: var(--font-mono); font-weight: 700; font-size: 16px; }
         .asset-symbol.metal-sym { color: var(--wsj-gold); }
+        .asset-symbol.macro-sym { color: #0274B6; }
         .asset-decision {
             font-size: 10px;
             font-weight: 700;
@@ -404,21 +405,21 @@
     </main>
 
     <footer class="footer">
-        Gödel Machine v3.1 · verified predictions · github.io | Ensemble: RSI-14 + MACD(12,26,9) + Bollinger(20,2σ) + Momentum | 15s Refresh | Rate-Limit Backoff | Gas-Aware | Crypto: CoinGecko | Metals: Multi-API Rotation
+        Gödel Machine v3.1 · verified predictions · github.io | Ensemble: RSI-14 + MACD(12,26,9) + Bollinger(20,2σ) + Momentum | 15s Refresh | Rate-Limit Backoff | Gas-Aware | Crypto: CoinGecko | Metals: Multi-API | Macro: Yahoo DXY/WTI
     </footer>
 
     <script>
         // ========== CONFIG ==========
         const assets = {
-            bitcoin:     { symbol: 'BTC',    name: 'Bitcoin',      decimals: 2, type: 'crypto' },
-            ethereum:    { symbol: 'ETH',    name: 'Ethereum',     decimals: 2, type: 'crypto' },
-            solana:      { symbol: 'SOL',    name: 'Solana',       decimals: 2, type: 'crypto' },
-            hyperliquid: { symbol: 'HYPE',   name: 'Hyperliquid',  decimals: 4, type: 'crypto' },
-            cardano:     { symbol: 'ADA',    name: 'Cardano',      decimals: 4, type: 'crypto' },
-            dogecoin:    { symbol: 'DOGE',   name: 'Dogecoin',     decimals: 6, type: 'crypto' },
-            chainlink:   { symbol: 'LINK',   name: 'Chainlink',    decimals: 2, type: 'crypto' },
-            gold:        { symbol: 'GOLD',   name: 'Gold Futures', decimals: 2, type: 'metal' },
-            silver:      { symbol: 'SILVER', name: 'Silver Futures', decimals: 2, type: 'metal' }
+            bitcoin:     { symbol: 'BTC',  name: 'Bitcoin',      decimals: 2, type: 'crypto' },
+            ethereum:    { symbol: 'ETH',  name: 'Ethereum',     decimals: 2, type: 'crypto' },
+            solana:      { symbol: 'SOL',  name: 'Solana',       decimals: 2, type: 'crypto' },
+            hyperliquid: { symbol: 'HYPE', name: 'Hyperliquid',  decimals: 4, type: 'crypto' },
+            chainlink:   { symbol: 'LINK', name: 'Chainlink',    decimals: 2, type: 'crypto' },
+            gold:        { symbol: 'GOLD', name: 'Gold',          decimals: 2, type: 'metal' },
+            silver:      { symbol: 'SILVER', name: 'Silver',     decimals: 2, type: 'metal' },
+            dxy:         { symbol: 'DXY',  name: 'US Dollar Index', decimals: 3, type: 'macro', yahoo: 'DX-Y.NYB' },
+            wti:         { symbol: 'WTI',  name: 'Crude Oil WTI', decimals: 2, type: 'macro', yahoo: 'CL=F' }
         };
 
         const INCOMPLETENESS_TYPES = ['IC','HN','SR','IG','RS','OE','CL'];
@@ -438,7 +439,7 @@
         let dataRefreshCount = 0;
 
         // Closed-loop prediction ledger (localStorage)
-        const LEDGER_KEY = 'godel_pred_ledger_v31';
+        const LEDGER_KEY = 'godel_pred_ledger_v32';
         const PRED_HORIZON_MS = 5 * 60 * 1000;
         const PRED_DEADBAND = 0.05; // percent
         const PRED_MAX_AGE_MS = PRED_HORIZON_MS * 3;
@@ -465,7 +466,8 @@
         // Rate limit tracking with exponential backoff
         const apiState = {
             crypto: { failures: 0, backoffUntil: 0, lastSuccess: 0 },
-            metals: { failures: 0, backoffUntil: 0, lastSuccess: 0 }
+            metals: { failures: 0, backoffUntil: 0, lastSuccess: 0 },
+            macro:  { failures: 0, backoffUntil: 0, lastSuccess: 0 }
         };
         const MAX_BACKOFF = 60000; // 1 minute max backoff
 
@@ -474,21 +476,23 @@
 
         // Gas cost estimates (in USD)
         const GAS_COSTS = {
-            ethereum: { swap: 15, transfer: 5 },  // ETH network
-            bitcoin: { swap: 2, transfer: 1 },    // BTC
-            solana: { swap: 0.01, transfer: 0.0001 }, // SOL - very cheap
-            cardano: { swap: 0.20, transfer: 0.17 },
-            dogecoin: { swap: 0.50, transfer: 0.01 },
-            chainlink: { swap: 15, transfer: 5 }, // ERC20
+            ethereum: { swap: 15, transfer: 5 },
+            bitcoin: { swap: 2, transfer: 1 },
+            solana: { swap: 0.01, transfer: 0.0001 },
+            chainlink: { swap: 15, transfer: 5 },
             hyperliquid: { swap: 0.10, transfer: 0.01 },
-            gold: { swap: 25, transfer: 0 },  // ETF/futures commission
-            silver: { swap: 10, transfer: 0 }
+            gold: { swap: 25, transfer: 0 },
+            silver: { swap: 10, transfer: 0 },
+            dxy: { swap: 5, transfer: 0 },   // futures / CFD spread proxy
+            wti: { swap: 8, transfer: 0 }
         };
 
         Object.keys(assets).forEach(a => { priceHistory[a] = []; assetAnalysis[a] = {}; ensembleSignals[a] = {}; });
 
         allPrices['gold'] = { price: 2890, change: 0, isPlaceholder: true };
         allPrices['silver'] = { price: 32.50, change: 0, isPlaceholder: true };
+        allPrices['dxy'] = { price: 104.0, change: 0, isPlaceholder: true };
+        allPrices['wti'] = { price: 78.0, change: 0, isPlaceholder: true };
 
         // ========== METAL APIs ==========
         const metalApis = [
@@ -797,6 +801,76 @@
                     apiState.crypto.backoffUntil = now + getBackoffDelay(apiState.crypto.failures);
                 }
                 throw e;
+            }
+        }
+
+
+        // ========== FETCH MACRO (DXY, WTI via Yahoo chart) ==========
+        async function fetchYahooChart(symbol) {
+            const yUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`;
+            // Direct first (may CORS-fail in browser); fall back to allorigins
+            let data = null;
+            try {
+                const resp = await fetchWithTimeout(yUrl, 6000);
+                if (resp.ok) data = await resp.json();
+            } catch (_) {}
+            if (!data) {
+                const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(yUrl)}`;
+                const resp = await fetchWithTimeout(proxied, 8000);
+                if (!resp.ok) throw new Error(`Yahoo proxy HTTP ${resp.status}`);
+                data = await resp.json();
+            }
+            const result = data?.chart?.result?.[0];
+            if (!result) throw new Error('No chart result');
+            const meta = result.meta || {};
+            const quotes = result.indicators?.quote?.[0];
+            const closes = (quotes?.close || []).filter(x => x != null && isFinite(x));
+            const price = meta.regularMarketPrice ?? closes[closes.length - 1];
+            if (price == null || !isFinite(price)) throw new Error('No price');
+            let change = meta.regularMarketChangePercent;
+            if (change == null && closes.length >= 2) {
+                const prev = closes[closes.length - 2];
+                if (prev > 0) change = ((price - prev) / prev) * 100;
+            }
+            return { price: Number(price), change: Number(change || 0) };
+        }
+
+        async function fetchMacroPrices() {
+            const now = Date.now();
+            if (now < apiState.macro.backoffUntil) {
+                addLogEntry(`Macro API: backing off ${Math.ceil((apiState.macro.backoffUntil - now)/1000)}s`);
+                return;
+            }
+            const macros = Object.keys(assets).filter(a => assets[a].type === 'macro');
+            let ok = 0;
+            for (const key of macros) {
+                const ysym = assets[key].yahoo;
+                if (!ysym) continue;
+                try {
+                    const q = await fetchYahooChart(ysym);
+                    if (allPrices[key]?.isPlaceholder) priceHistory[key] = [];
+                    allPrices[key] = {
+                        price: q.price,
+                        change: safeNumber(q.change, 0),
+                        isPlaceholder: false,
+                        lastUpdate: now
+                    };
+                    priceHistory[key].push({ time: now, price: q.price });
+                    if (priceHistory[key].length > 100) priceHistory[key].shift();
+                    ok++;
+                    addLogEntry(`${assets[key].symbol}: ${q.price.toFixed(assets[key].decimals)} (${safeNumber(q.change,0).toFixed(2)}%)`);
+                } catch (e) {
+                    addLogEntry(`${assets[key].symbol} fetch failed: ${e.message}`);
+                    apiState.macro.failures++;
+                }
+            }
+            if (ok > 0) {
+                apiState.macro.failures = 0;
+                apiState.macro.lastSuccess = now;
+                lastFetchTime = now;
+            } else {
+                apiState.macro.failures++;
+                apiState.macro.backoffUntil = now + getBackoffDelay(apiState.macro.failures);
             }
         }
 
@@ -1195,10 +1269,11 @@
                 const d = allPrices[key] || { price: 0, change: 0 };
                 const an = assetAnalysis[key] || {};
                 const isMetal = a.type === 'metal';
+                const isMacro = a.type === 'macro';
                 const isSelected = key === currentAsset;
 
                 const card = document.createElement('div');
-                card.className = 'asset-card' + (isMetal ? ' metal' : '') + (isSelected ? ' selected' : '');
+                card.className = 'asset-card' + (isMetal ? ' metal' : '') + (isMacro ? ' macro' : '') + (isSelected ? ' selected' : '');
                 card.onclick = () => { currentAsset = key; renderAll(); };
 
                 const dec = an.decision || '--';
@@ -1210,7 +1285,7 @@
 
                 card.innerHTML = `
                     <div class="asset-card-header">
-                        <span class="asset-symbol ${isMetal ? 'metal-sym' : ''}">${a.symbol}</span>
+                        <span class="asset-symbol ${isMetal ? 'metal-sym' : (isMacro ? 'macro-sym' : '')}">${a.symbol}</span>
                         <span class="asset-decision ${dec.toLowerCase()}">${dec}</span>
                     </div>
                     <div>
@@ -1599,7 +1674,8 @@
             try {
                 await Promise.all([
                     fetchCryptoPrices().catch(e => addLogEntry('Crypto API error')),
-                    fetchMetalPrices().catch(e => addLogEntry('Metal API error'))
+                    fetchMetalPrices().catch(e => addLogEntry('Metal API error')),
+                    fetchMacroPrices().catch(e => addLogEntry('Macro API error'))
                 ]);
                 dataRefreshCount++;
                 improvementCycles = dataRefreshCount;
