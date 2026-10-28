@@ -283,6 +283,11 @@
         .scorecard .sc-item .sc-val { font-family: 'Libre Baskerville', Georgia, serif; font-size: 18px; font-weight: 700; margin-top: 2px; }
         .scorecard .sc-note { grid-column: 1 / -1; color: var(--wsj-gray-mid); font-size: 11px; line-height: 1.4; font-style: italic; }
 
+        @media (max-width: 600px) {
+            .header { flex-wrap: wrap; gap: 8px; padding: 12px 16px; }
+            .header-right { flex-wrap: wrap; gap: 8px; }
+        }
+
         /* Historical Replay */
         .bt-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
         .bt-button { font-family: var(--font-body); font-size: 12px; font-weight: 600; padding: 6px 14px; background: var(--wsj-black); color: var(--wsj-white); border: none; border-radius: 2px; cursor: pointer; }
@@ -452,6 +457,23 @@
         const INCOMPLETENESS_TYPES = ['IC','HN','SR','IG','RS','OE','CL'];
         const INCOMPLETENESS_NAMES = ['Indicator Contradiction','Historical Novelty','Self-Reference Paradox','Information Gap','Regime Superposition','Observer Effect','Complexity Limit'];
 
+        // Incompleteness thresholds, in units of the asset's own typical move or day, so they
+        // hold across sampling intervals and price levels. A condition counts as unknowable
+        // when it lands in the tail of its own distribution: cutoffs sit near the 90th/95th/99th
+        // percentiles measured on volatility-clustered (GARCH) prices, which were identical at
+        // 0.03%, 0.3% and 3% per-bar volatility. Vol ratios compare the last 10 moves' spread
+        // with the moves before them.
+        const INC_THRESHOLDS = {
+            macdZ: 0.25,          // MACD histogram opposing an RSI extreme, in typical moves (~p50)
+            noveltyZ: 2.5,        // price this many std devs from its window mean (~p95)
+            counterMoveZ: 2,      // latest move against the 24h trend, in typical moves (~p95)
+            trendZ: 1,            // 24h change that counts as a trend, in typical days
+            flatZ: 0.25,          // 24h change that counts as no net direction, in typical days
+            regimeVolRatio: 1.4,  // volatility expansion: regime change (~p90)
+            shockVolRatio: 1.6,   // volatility shock (~p95)
+            extremeVolRatio: 1.9  // extreme expansion (~p99)
+        };
+
         // ========== STATE ==========
         let currentAsset = 'bitcoin';
         let priceHistory = {};
@@ -572,6 +594,13 @@
 
         // ========== HELPERS ==========
         function safeNumber(v, fb = 0) { return (v == null || isNaN(v) || !isFinite(v)) ? fb : v; }
+
+        // Population standard deviation; 0 for fewer than one value.
+        function stdDev(xs) {
+            if (!xs.length) return 0;
+            const mean = xs.reduce((a, b) => a + b, 0) / xs.length;
+            return safeNumber(Math.sqrt(Math.max(0, xs.reduce((a, b) => a + (b - mean) ** 2, 0) / xs.length)), 0);
+        }
 
         // ========== ENSEMBLE TECHNICAL INDICATORS ==========
 
@@ -980,21 +1009,27 @@
             const change = safeNumber(data.change, 0);
 
             // Volatility
-            let volatility = 0;
-            if (hist.length > 1) {
-                const rets = [];
-                for (let i = 1; i < hist.length; i++) {
-                    const pp = safeNumber(hist[i-1].price, 1);
-                    const cp = safeNumber(hist[i].price, pp);
-                    if (pp > 0) { const r = (cp - pp) / pp * 100; if (isFinite(r)) rets.push(r); }
-                }
-                if (rets.length > 0) {
-                    const mean = rets.reduce((a,b) => a+b, 0) / rets.length;
-                    const v = rets.reduce((a,b) => a + Math.pow(b-mean,2), 0) / rets.length;
-                    volatility = Math.sqrt(Math.max(0, v));
-                }
+            const rets = [];
+            for (let i = 1; i < hist.length; i++) {
+                const pp = safeNumber(hist[i-1].price, 1);
+                const cp = safeNumber(hist[i].price, pp);
+                if (pp > 0) { const r = (cp - pp) / pp * 100; if (isFinite(r)) rets.push(r); }
             }
-            volatility = safeNumber(volatility, 0);
+            const volatility = stdDev(rets);
+
+            // Scale for the incompleteness checks. Repeated quotes (the feed polls faster than
+            // prices refresh) are not new observations, so only actual moves set the scale.
+            const moves = rets.filter(r => r !== 0);
+            const moveScale = stdDev(moves);
+            // Recent spread vs the stretch before it; comparing against a window that includes
+            // the recent moves would dilute exactly the spikes this is meant to catch.
+            const baseScale = stdDev(moves.slice(0, -10));
+            const volRatio = (moves.length >= 20 && baseScale > 0) ? stdDev(moves.slice(-10)) / baseScale : 1;
+            // Typical 24h move implied by this history (random-walk scaling of per-move spread).
+            const spanMs = hist.length > 1 ? safeNumber(hist[hist.length - 1].time - hist[0].time, 0) : 0;
+            const msPerMove = moves.length ? spanMs / moves.length : 0;
+            const dayScale = (moveScale > 0 && msPerMove > 0) ? moveScale * Math.sqrt(86400000 / msPerMove) : 0;
+            const changeZ = dayScale > 0 ? change / dayScale : 0;
 
             // ===== ENSEMBLE INDICATORS =====
             const prices = hist.map(h => safeNumber(h.price, 0)).filter(p => p > 0);
@@ -1015,23 +1050,31 @@
             // Normalize MACD histogram as % of price for cross-asset comparability
             const macdHistPct = price > 0 ? (macdData.histogram / price) * 100 : 0;
 
-            // 7 Incompleteness types (enhanced with real indicators)
+            // Scale-free measures, so thresholds mean the same thing for 15s ticks and 5m bars
+            // and for any price level: each is in units of the asset's own typical move.
+            const priceSd = stdDev(pv);
+            const priceZ = priceSd > 0 ? (price - meanP) / priceSd : 0;
+            const microZ = moveScale > 0 ? micro / moveScale : 0;
+            const macdZ = moveScale > 0 ? macdHistPct / moveScale : 0;
+            const novel = Math.abs(priceZ) > INC_THRESHOLDS.noveltyZ || hist.length < 5;
+
+            // 7 Incompleteness types
+            const T = INC_THRESHOLDS;
             const inc = [
-                // IC: Indicator Contradiction (RSI vs MACD disagree significantly)
-                // FIX: Use normalized histogram % instead of raw price units
-                (rsi > 65 && macdHistPct < -0.05) || (rsi < 35 && macdHistPct > 0.05),
-                // HN: Historical Novelty (price deviation or sparse data)
-                dev > 5 || hist.length < 5,
-                // SR: Self-Reference Paradox (macro vs micro trend contradiction)
-                (change > 1 && micro < -0.2) || (change < -1 && micro > 0.2),
+                // IC: Indicator Contradiction (RSI extreme while MACD momentum points the other way)
+                (rsi > 65 && macdZ < -T.macdZ) || (rsi < 35 && macdZ > T.macdZ),
+                // HN: Historical Novelty (price far outside its recent distribution, or sparse data)
+                novel,
+                // SR: Self-Reference Paradox (latest move sharply contradicts a meaningful 24h trend)
+                (changeZ > T.trendZ && microZ < -T.counterMoveZ) || (changeZ < -T.trendZ && microZ > T.counterMoveZ),
                 // IG: Information Gap (insufficient data)
                 hist.length < 20 || data.isPlaceholder === true,
-                // RS: Regime Superposition (low change but high volatility - unclear direction)
-                Math.abs(change) < 0.5 && volatility > 1,
-                // OE: Observer Effect (high volatility + limited observation)
-                volatility > 3 && hist.length < 30,
-                // CL: Complexity Limit (extreme volatility or multiple uncertainties)
-                volatility > 5 || (volatility > 3 && (dev > 5 || hist.length < 5))
+                // RS: Regime Superposition (no net direction while volatility expands)
+                Math.abs(changeZ) < T.flatZ && volRatio > T.regimeVolRatio,
+                // OE: Observer Effect (volatility expanding before there is much history)
+                volRatio > T.shockVolRatio && hist.length < 30,
+                // CL: Complexity Limit (extreme volatility expansion, or expansion plus novelty)
+                volRatio > T.extremeVolRatio || (volRatio > T.shockVolRatio && novel)
             ];
 
             const hasInc = inc.some(Boolean);
@@ -1073,7 +1116,7 @@
                 price, change, volatility,
                 rsi, macdSignal: macdData.histogram, macd: macdData,
                 bollinger, roc,
-                inc, decision, pred: ensemble.signal, dev,
+                inc, decision, pred: ensemble.signal, dev, volRatio, priceZ, microZ, macdZ, changeZ,
                 ensemble, decisionConfidence
             };
         }
@@ -1808,24 +1851,30 @@
             let abstainNote;
             if (abN < 10) abstainNote = `Abstention fired too rarely (${abN} scorable signals) to judge whether it filters bad calls.`;
             else {
-                const gap = (tr.hits / trN - ab.hits / abN) * 100;
-                abstainNote = gap > 0
-                    ? `When the engine abstained, the ensemble's own call was right ${(ab.hits / abN * 100).toFixed(0)}% of the time vs ${(tr.hits / trN * 100).toFixed(0)}% when it didn't, so abstaining skipped worse calls (gap ${gap.toFixed(1)} pts).`
-                    : `Abstaining did not help: the ensemble was right ${(ab.hits / abN * 100).toFixed(0)}% of the time on bars the engine skipped vs ${(tr.hits / trN * 100).toFixed(0)}% on bars it traded.`;
+                const pAb = ab.hits / abN, pTr = tr.hits / trN;
+                const pooled = (ab.hits + tr.hits) / (abN + trN);
+                const se = Math.sqrt(pooled * (1 - pooled) * (1 / abN + 1 / trN));
+                const z = se > 0 ? (pTr - pAb) / se : 0;
+                const rates = `the ensemble's own call was right ${(pAb * 100).toFixed(0)}% of the time on ${abN} skipped bars vs ${(pTr * 100).toFixed(0)}% on ${trN} traded bars`;
+                if (z > 1.96) abstainNote = `Abstaining helped: ${rates}, a significant difference, so it filtered out worse calls.`;
+                else if (z < -1.96) abstainNote = `Abstaining hurt: ${rates}, a significant difference, so it skipped better calls.`;
+                else abstainNote = `No significant effect from abstaining yet: ${rates}. More history is needed to tell.`;
             }
 
-            const dormant = INCOMPLETENESS_TYPES.filter((_, k) => total.incFires[k] / total.bars < 0.01);
-            const fireRates = INCOMPLETENESS_TYPES.map((t, k) => `${t} ${(total.incFires[k] / total.bars * 100).toFixed(0)}%`).join(' · ');
-            const dormantNote = dormant.length
-                ? `${dormant.join(', ')} fired on under 1% of bars: their thresholds are probably set for a different timescale than 5-minute data.`
-                : 'Every incompleteness type fired at least occasionally.';
+            // IG cannot fire after the replay's warmup, and OE only fires before 30 observations.
+            const structural = new Set(['IG', 'OE']);
+            const rare = INCOMPLETENESS_TYPES.filter((t, k) => !structural.has(t) && total.incFires[k] / total.bars < 0.01);
+            const fireRates = INCOMPLETENESS_TYPES.map((t, k) => `${t} ${(total.incFires[k] / total.bars * 100).toFixed(1)}%`).join(' · ');
+            const rareNote = rare.length
+                ? `${rare.join(', ')} fired on under 1% of bars in this market. IG and OE are early-session checks, so they rarely fire in a replay.`
+                : 'IG and OE are early-session checks, so they rarely fire in a replay.';
 
             const directional = total.upBars + total.downBars;
             summary.innerHTML = `
                 <div class="bt-headline">Engine hit rate: ${formatHitRate(total.engine)}</div>
                 <p>${verdict} Baselines on the same bars: "last move continues" ${formatHitRate(total.persistence)}; always-long ${directional ? (total.upBars / directional * 100).toFixed(1) + '%' : '—'}.</p>
                 <p>${abstainNote}</p>
-                <p>Incompleteness fire rate: ${fireRates}. ${dormantNote}</p>`;
+                <p>Abstain rate ${(total.decisions.ABSTAIN / total.bars * 100).toFixed(1)}%. Incompleteness fire rate: ${fireRates}. ${rareNote}</p>`;
         }
 
         // ========== RENDER ALL ==========
