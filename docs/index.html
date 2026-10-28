@@ -283,6 +283,20 @@
         .scorecard .sc-item .sc-val { font-family: 'Libre Baskerville', Georgia, serif; font-size: 18px; font-weight: 700; margin-top: 2px; }
         .scorecard .sc-note { grid-column: 1 / -1; color: var(--wsj-gray-mid); font-size: 11px; line-height: 1.4; font-style: italic; }
 
+        /* Historical Replay */
+        .bt-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+        .bt-button { font-family: var(--font-body); font-size: 12px; font-weight: 600; padding: 6px 14px; background: var(--wsj-black); color: var(--wsj-white); border: none; border-radius: 2px; cursor: pointer; }
+        .bt-button:hover { background: var(--wsj-blue); }
+        .bt-button:disabled { background: var(--wsj-gray-light); cursor: wait; }
+        .bt-status { font-size: 11px; color: var(--wsj-gray-mid); }
+        .bt-summary { font-size: 12px; line-height: 1.55; color: var(--wsj-gray-dark); }
+        .bt-summary p { margin-bottom: 6px; }
+        .bt-headline { font-family: var(--font-headline); font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+        .bt-ci { font-size: 10px; color: var(--wsj-gray-light); font-weight: 400; }
+        .bt-table { margin-top: 8px; }
+        .bt-table td { text-align: right; }
+        .bt-table th:not(:first-child) { text-align: right; }
+
         /* Footer */
         .footer { text-align: center; padding: 16px; font-size: 11px; color: var(--wsj-gray-mid); border-top: 1px solid var(--wsj-gray-border); margin-top: 24px; }
 
@@ -395,8 +409,21 @@
             <div class="godel-metric"><div class="godel-metric-label">Improvement Cycles</div><div class="godel-metric-value" id="cycles">--</div></div>
             <div class="godel-metric"><div class="godel-metric-label">Meta Level</div><div class="godel-metric-value" id="meta-level">L0</div></div>
             <div class="godel-metric"><div class="godel-metric-label">Volatility</div><div class="godel-metric-value" id="vol-display">--%</div></div>
-            <div class="godel-metric"><div class="godel-metric-label">RSI (sim)</div><div class="godel-metric-value" id="rsi-display">--</div></div>
+            <div class="godel-metric"><div class="godel-metric-label">RSI-14</div><div class="godel-metric-value" id="rsi-display">--</div></div>
             <div class="godel-metric"><div class="godel-metric-label">MACD Signal</div><div class="godel-metric-value" id="macd-display">--</div></div>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+            <div class="card-title">Historical Replay <span style="font-weight:400;color:var(--wsj-gray-mid);font-size:11px">(same engine · last 24h of 5-minute bars · scored on the next bar)</span></div>
+            <div class="bt-controls">
+                <button id="bt-run" class="bt-button" onclick="runReplay()">Run 24h replay</button>
+                <span id="bt-status" class="bt-status">Measures the engine against history in seconds, instead of waiting for live calls to resolve.</span>
+            </div>
+            <div id="bt-summary" class="bt-summary"></div>
+            <table class="returns-table bt-table">
+                <thead><tr><th>Asset</th><th>Engine hit rate [95% CI]</th><th>"Last move continues"</th><th>Up bars</th><th>Abstain rate</th></tr></thead>
+                <tbody id="bt-body"><tr><td colspan="5" style="text-align:left;color:var(--wsj-gray-mid)">Not run yet.</td></tr></tbody>
+            </table>
         </div>
 
         <div class="log-panel" id="improvement-log">
@@ -405,7 +432,7 @@
     </main>
 
     <footer class="footer">
-        Gödel Machine v3.1 · verified predictions · github.io | Ensemble: RSI-14 + MACD(12,26,9) + Bollinger(20,2σ) + Momentum | 15s Refresh | Rate-Limit Backoff | Gas-Aware | Crypto: CoinGecko | Metals: Multi-API | Macro: Yahoo DXY/WTI
+        Gödel Machine v3.2 · verified predictions · 24h replay backtest · github.io | Ensemble: RSI-14 + MACD(12,26,9) + Bollinger(20,2σ) + Momentum | 15s Refresh | Rate-Limit Backoff | Gas-Aware | Crypto: CoinGecko | Metals: Multi-API | Macro: Yahoo DXY/WTI
     </footer>
 
     <script>
@@ -639,7 +666,12 @@
 
         // Ensemble Signal Aggregator
         function calcEnsemble(assetKey) {
-            const hist = priceHistory[assetKey];
+            const result = calcEnsembleFromHistory(priceHistory[assetKey]);
+            if (result.volSignal !== undefined) ensembleSignals[assetKey] = result;
+            return result;
+        }
+
+        function calcEnsembleFromHistory(hist) {
             if (!hist || hist.length < 5) return { signal: 'NEUTRAL', confidence: 0.3, bullVotes: 0, bearVotes: 0, neutralVotes: 5 };
 
             const prices = hist.map(h => safeNumber(h.price, 0)).filter(p => p > 0);
@@ -699,14 +731,7 @@
                 confidence = 0.3 + (neutralVotes / totalVotes) * 0.2;
             }
 
-            // Store detailed signals
-            ensembleSignals[assetKey] = {
-                rsi, macd: macdData, bollinger, roc, volSignal,
-                bullVotes, bearVotes, neutralVotes,
-                signal, confidence
-            };
-
-            return { signal, confidence, bullVotes, bearVotes, neutralVotes, rsi, macd: macdData, bollinger, roc };
+            return { signal, confidence, bullVotes, bearVotes, neutralVotes, rsi, macd: macdData, bollinger, roc, volSignal };
         }
         function formatPrice(p, d = 2) {
             if (p == null || isNaN(p) || !isFinite(p)) return '$--';
@@ -927,8 +952,28 @@
 
         // ========== ANALYSIS ENGINE (Ensemble-Enhanced) ==========
         function analyzeAsset(assetKey) {
-            const data = allPrices[assetKey];
-            const hist = priceHistory[assetKey];
+            const ensemble = calcEnsemble(assetKey);
+            const r = evaluateSignal(priceHistory[assetKey], allPrices[assetKey], ensemble);
+            if (!r) return null;
+
+            // Strange loop detection — rolling 30-minute window only
+            const pred = r.pred;
+            const nowL = Date.now();
+            const prev = previousPredictions[assetKey];
+            if (prev && prev.pred && prev.pred !== pred && pred !== 'NEUTRAL' && (nowL - prev.t) < 30 * 60 * 1000) {
+                previousPredictions[assetKey] = { pred, t: nowL, flipped: true, flipT: nowL };
+                addLogEntry(`Loop: ${assets[assetKey].symbol} ${prev.pred} → ${pred}`);
+            } else if (pred !== 'NEUTRAL') {
+                previousPredictions[assetKey] = { pred, t: nowL, flipped: prev?.flipped || false, flipT: prev?.flipT || 0 };
+            }
+            strangeLoopCount = Object.values(previousPredictions).filter(p => p && p.flipped && p.flipT && (nowL - p.flipT) < 30 * 60 * 1000).length;
+
+            r.gasCost = GAS_COSTS[assetKey] || { swap: 5, transfer: 1 };
+            return r;
+        }
+
+        // Pure decision core: no globals read or written, so live mode and replay share one engine.
+        function evaluateSignal(hist, data, ensemble = calcEnsembleFromHistory(hist)) {
             if (!data || !hist || hist.length < 1) return null;
 
             const price = safeNumber(data.price, 1);
@@ -953,9 +998,6 @@
 
             // ===== ENSEMBLE INDICATORS =====
             const prices = hist.map(h => safeNumber(h.price, 0)).filter(p => p > 0);
-
-            // Get ensemble signal (calculates all indicators internally)
-            const ensemble = calcEnsemble(assetKey);
 
             // Reuse indicators from ensemble to avoid redundant calculation
             const rsi = ensemble.rsi || calcRSI(prices, 14);
@@ -983,7 +1025,7 @@
                 // SR: Self-Reference Paradox (macro vs micro trend contradiction)
                 (change > 1 && micro < -0.2) || (change < -1 && micro > 0.2),
                 // IG: Information Gap (insufficient data)
-                hist.length < 20 || allPrices[assetKey]?.isPlaceholder === true,
+                hist.length < 20 || data.isPlaceholder === true,
                 // RS: Regime Superposition (low change but high volatility - unclear direction)
                 Math.abs(change) < 0.5 && volatility > 1,
                 // OE: Observer Effect (high volatility + limited observation)
@@ -1027,27 +1069,12 @@
                 decisionConfidence = 0.4;
             }
 
-            // Strange loop detection — rolling 30-minute window only
-            const pred = ensemble.signal;
-            const nowL = Date.now();
-            const prev = previousPredictions[assetKey];
-            if (prev && prev.pred && prev.pred !== pred && pred !== 'NEUTRAL' && (nowL - prev.t) < 30 * 60 * 1000) {
-                // count only flips inside the window; recompute window total below
-                previousPredictions[assetKey] = { pred, t: nowL, flipped: true, flipT: nowL };
-                addLogEntry(`Loop: ${assets[assetKey].symbol} ${prev.pred} → ${pred}`);
-            } else if (pred !== 'NEUTRAL') {
-                previousPredictions[assetKey] = { pred, t: nowL, flipped: prev?.flipped || false, flipT: prev?.flipT || 0 };
-            }
-            // recompute strangeLoopCount over last 30m
-            strangeLoopCount = Object.values(previousPredictions).filter(p => p && p.flipped && p.flipT && (nowL - p.flipT) < 30 * 60 * 1000).length;
-
             return {
                 price, change, volatility,
                 rsi, macdSignal: macdData.histogram, macd: macdData,
                 bollinger, roc,
-                inc, decision, pred, dev,
-                ensemble, decisionConfidence,
-                gasCost: GAS_COSTS[assetKey] || { swap: 5, transfer: 1 }
+                inc, decision, pred: ensemble.signal, dev,
+                ensemble, decisionConfidence
             };
         }
 
@@ -1625,6 +1652,182 @@
             }
         }
 
+        // ========== HISTORICAL REPLAY ==========
+        // Replays the live engine over past 5-minute bars. A decision at bar i sees only
+        // bars 0..i and is scored on the move from bar i to bar i+1, so horizons never overlap.
+        const REPLAY_WINDOW = 100;  // same cap as live priceHistory
+        const REPLAY_WARMUP = 20;   // below this the Information Gap check always fires
+        const REPLAY_SOURCES = {
+            bitcoin: 'bitcoin', ethereum: 'ethereum', solana: 'solana',
+            hyperliquid: 'hyperliquid', chainlink: 'chainlink', gold: 'pax-gold'
+        };
+        let replayRunning = false;
+
+        function newTally() { return { hits: 0, misses: 0, flat: 0 }; }
+
+        function addTally(into, t) { into.hits += t.hits; into.misses += t.misses; into.flat += t.flat; }
+
+        function wilsonInterval(k, n, z = 1.96) {
+            if (!n) return null;
+            const p = k / n, d = 1 + z * z / n;
+            const center = (p + z * z / (2 * n)) / d;
+            const half = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d;
+            return [center - half, center + half];
+        }
+
+        function replaySeries(series, deadband = PRED_DEADBAND) {
+            const s = {
+                bars: 0, upBars: 0, downBars: 0,
+                engine: newTally(), persistence: newTally(),
+                ensembleWhenTraded: newTally(), ensembleWhenAbstained: newTally(),
+                decisions: { BUY: 0, SELL: 0, HOLD: 0, ABSTAIN: 0 },
+                incFires: [0, 0, 0, 0, 0, 0, 0]
+            };
+            const score = (t, bullish, move) => {
+                if (Math.abs(move) < deadband) t.flat++;
+                else if (bullish === (move > 0)) t.hits++;
+                else t.misses++;
+            };
+            let dayStart = 0;
+            for (let i = REPLAY_WARMUP - 1; i < series.length - 1; i++) {
+                const p = series[i].price, next = series[i + 1].price, prevP = series[i - 1].price;
+                if (!(p > 0 && next > 0 && prevP > 0)) continue;
+                // Trailing change stands in for the live 24h change; shorter than 24h early in the series.
+                while (series[dayStart].time < series[i].time - 86400000) dayStart++;
+                const change = (p / series[dayStart].price - 1) * 100;
+                const r = evaluateSignal(series.slice(Math.max(0, i - REPLAY_WINDOW + 1), i + 1), { price: p, change });
+                if (!r) continue;
+
+                const move = (next / p - 1) * 100;
+                s.bars++;
+                if (move >= deadband) s.upBars++;
+                else if (move <= -deadband) s.downBars++;
+                s.decisions[r.decision] = (s.decisions[r.decision] || 0) + 1;
+                r.inc.forEach((fired, k) => { if (fired) s.incFires[k]++; });
+
+                if (r.decision === 'BUY' || r.decision === 'SELL') score(s.engine, r.decision === 'BUY', move);
+                if (r.pred === 'BULLISH' || r.pred === 'BEARISH') {
+                    score(r.decision === 'ABSTAIN' ? s.ensembleWhenAbstained : s.ensembleWhenTraded, r.pred === 'BULLISH', move);
+                }
+                const lastMove = (p / prevP - 1) * 100;
+                if (Math.abs(lastMove) >= deadband) score(s.persistence, lastMove > 0, move);
+            }
+            return s;
+        }
+
+        async function fetchReplaySeries(geckoId) {
+            const resp = await fetchWithTimeout(`https://api.coingecko.com/api/v3/coins/${geckoId}/market_chart?vs_currency=usd&days=1`, 10000);
+            if (resp.status === 429) throw new Error('rate limited');
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            if (!Array.isArray(data.prices)) throw new Error('no price data');
+            return data.prices
+                .map(([time, price]) => ({ time, price: safeNumber(price, 0) }))
+                .filter(b => b.price > 0)
+                .sort((a, b) => a.time - b.time);
+        }
+
+        function formatHitRate(t) {
+            const n = t.hits + t.misses;
+            if (!n) return '—';
+            const ci = wilsonInterval(t.hits, n);
+            return `${(t.hits / n * 100).toFixed(1)}% <span class="bt-ci">[${(ci[0] * 100).toFixed(0)}–${(ci[1] * 100).toFixed(0)}] n=${n}</span>`;
+        }
+
+        async function runReplay() {
+            if (replayRunning) return;
+            replayRunning = true;
+            const btn = document.getElementById('bt-run');
+            const status = document.getElementById('bt-status');
+            if (btn) btn.disabled = true;
+
+            const results = {};
+            const keys = Object.keys(REPLAY_SOURCES);
+            for (let i = 0; i < keys.length; i++) {
+                const key = keys[i];
+                if (status) status.textContent = `Fetching ${assets[key].symbol} (${i + 1}/${keys.length})…`;
+                try {
+                    const series = await fetchReplaySeries(REPLAY_SOURCES[key]);
+                    results[key] = replaySeries(series);
+                } catch (e) {
+                    results[key] = { error: e.message };
+                    if (e.message === 'rate limited') {
+                        apiState.crypto.failures++;
+                        apiState.crypto.backoffUntil = Date.now() + getBackoffDelay(apiState.crypto.failures);
+                        keys.slice(i + 1).forEach(k => { results[k] = { error: 'skipped (rate limited)' }; });
+                        break;
+                    }
+                }
+                // Space requests out: the live loop shares CoinGecko's free-tier rate limit.
+                if (i < keys.length - 1) await new Promise(r => setTimeout(r, 2500));
+            }
+
+            renderReplay(results);
+            const ok = Object.values(results).filter(r => !r.error).length;
+            if (status) status.textContent = `Replayed ${ok}/${keys.length} assets over the last 24h of 5-minute bars · ${new Date().toLocaleTimeString()}`;
+            addLogEntry(`Replay complete: ${ok}/${keys.length} assets`);
+            if (btn) btn.disabled = false;
+            replayRunning = false;
+        }
+
+        function renderReplay(results) {
+            const body = document.getElementById('bt-body');
+            const summary = document.getElementById('bt-summary');
+            if (!body || !summary) return;
+
+            const total = {
+                bars: 0, upBars: 0, downBars: 0, engine: newTally(), persistence: newTally(),
+                ensembleWhenTraded: newTally(), ensembleWhenAbstained: newTally(),
+                decisions: { BUY: 0, SELL: 0, HOLD: 0, ABSTAIN: 0 }, incFires: [0, 0, 0, 0, 0, 0, 0]
+            };
+            body.innerHTML = Object.entries(results).map(([key, r]) => {
+                const sym = assets[key].symbol;
+                if (r.error) return `<tr><td class="heatmap-asset">${sym}</td><td colspan="4" style="text-align:left;color:var(--wsj-gray-mid)">${r.error}</td></tr>`;
+                total.bars += r.bars; total.upBars += r.upBars; total.downBars += r.downBars;
+                ['engine', 'persistence', 'ensembleWhenTraded', 'ensembleWhenAbstained'].forEach(f => addTally(total[f], r[f]));
+                Object.keys(total.decisions).forEach(d => { total.decisions[d] += r.decisions[d] || 0; });
+                r.incFires.forEach((c, k) => { total.incFires[k] += c; });
+                const directional = r.upBars + r.downBars;
+                const upShare = directional ? `${(r.upBars / directional * 100).toFixed(0)}%` : '—';
+                const abstainRate = r.bars ? `${(r.decisions.ABSTAIN / r.bars * 100).toFixed(0)}%` : '—';
+                return `<tr><td class="heatmap-asset">${sym}</td><td>${formatHitRate(r.engine)}</td><td>${formatHitRate(r.persistence)}</td><td>${upShare}</td><td>${abstainRate}</td></tr>`;
+            }).join('');
+
+            if (!total.bars) { summary.innerHTML = '<p>No data could be replayed. Try again in a minute.</p>'; return; }
+
+            const n = total.engine.hits + total.engine.misses;
+            const ci = wilsonInterval(total.engine.hits, n);
+            let verdict;
+            if (!n) verdict = 'The engine made no BUY/SELL calls on this history, so there is nothing to score.';
+            else if (ci[0] > 0.5) verdict = `The engine beat a coin flip: the 95% interval sits entirely above 50%.`;
+            else if (ci[1] < 0.5) verdict = `The engine did worse than a coin flip: the 95% interval sits entirely below 50%.`;
+            else verdict = `No measurable edge: the 95% interval includes 50%, so this is indistinguishable from a coin flip on ${n} calls.`;
+
+            const tr = total.ensembleWhenTraded, ab = total.ensembleWhenAbstained;
+            const trN = tr.hits + tr.misses, abN = ab.hits + ab.misses;
+            let abstainNote;
+            if (abN < 10) abstainNote = `Abstention fired too rarely (${abN} scorable signals) to judge whether it filters bad calls.`;
+            else {
+                const gap = (tr.hits / trN - ab.hits / abN) * 100;
+                abstainNote = gap > 0
+                    ? `When the engine abstained, the ensemble's own call was right ${(ab.hits / abN * 100).toFixed(0)}% of the time vs ${(tr.hits / trN * 100).toFixed(0)}% when it didn't, so abstaining skipped worse calls (gap ${gap.toFixed(1)} pts).`
+                    : `Abstaining did not help: the ensemble was right ${(ab.hits / abN * 100).toFixed(0)}% of the time on bars the engine skipped vs ${(tr.hits / trN * 100).toFixed(0)}% on bars it traded.`;
+            }
+
+            const dormant = INCOMPLETENESS_TYPES.filter((_, k) => total.incFires[k] / total.bars < 0.01);
+            const fireRates = INCOMPLETENESS_TYPES.map((t, k) => `${t} ${(total.incFires[k] / total.bars * 100).toFixed(0)}%`).join(' · ');
+            const dormantNote = dormant.length
+                ? `${dormant.join(', ')} fired on under 1% of bars: their thresholds are probably set for a different timescale than 5-minute data.`
+                : 'Every incompleteness type fired at least occasionally.';
+
+            const directional = total.upBars + total.downBars;
+            summary.innerHTML = `
+                <div class="bt-headline">Engine hit rate: ${formatHitRate(total.engine)}</div>
+                <p>${verdict} Baselines on the same bars: "last move continues" ${formatHitRate(total.persistence)}; always-long ${directional ? (total.upBars / directional * 100).toFixed(1) + '%' : '—'}.</p>
+                <p>${abstainNote}</p>
+                <p>Incompleteness fire rate: ${fireRates}. ${dormantNote}</p>`;
+        }
+
         // ========== RENDER ALL ==========
         function renderAll() {
             // Analyze all assets
@@ -1690,7 +1893,7 @@
         setInterval(renderDataFreshness, 1000);
 
         // Init
-        addLogEntry('Gödel Machine v3.1 initializing — closed-loop verification enabled...');
+        addLogEntry('Gödel Machine v3.2 initializing — closed-loop verification + historical replay...');
         addLogEntry('Ensemble signals: RSI-14, MACD(12,26,9), Bollinger(20,2), ROC-10');
         fetchAndRender();
         setInterval(fetchAndRender, 15000); // Reduced from 30s to 15s
